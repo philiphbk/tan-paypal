@@ -92,6 +92,14 @@ npm run dev            # http://localhost:3000
 
 Secrets live in `.env.local`, which is git-ignored. Never commit them.
 
+### Tests
+
+```bash
+cd web && npm test
+```
+
+33 unit tests cover the state machine, the release policy (every way a verdict can fail to release money), the injection defences, the agreement validator and the authorization expiry windows. They run offline and need no credentials.
+
 ### A 3-minute walkthrough
 
 1. Home: describe a deal in plain English, review the drafted agreement, propose it.
