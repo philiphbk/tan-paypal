@@ -15,7 +15,7 @@ import type { Actor, Agreement, Deal } from "./types";
 const g = globalThis as unknown as { __db?: Database.Database; __locks?: Map<string, Promise<unknown>> };
 
 function open(): Database.Database {
-  const file = process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "tan.db");
+  const file = process.env.DATABASE_PATH || path.join(process.cwd(), "data", "tan.db");
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const db = new Database(file);
   db.pragma("journal_mode = WAL");

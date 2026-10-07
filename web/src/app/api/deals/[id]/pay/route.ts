@@ -9,7 +9,7 @@ export const POST = dealRoute(async (deal, _req) => {
       return NextResponse.json({ error: `Deal is ${deal.state}, expected AGREED` }, { status: 409 });
     }
     try {
-      const base = process.env.APP_BASE_URL ?? "http://localhost:3000";
+      const base = process.env.APP_BASE_URL ?? process.env.RENDER_EXTERNAL_URL ?? "http://localhost:3000";
       const { orderId, approveUrl } = await createAuthorizeOrder({
         dealId: deal.id,
         attempt: deal.paypal.fundingAttempt ?? 1,

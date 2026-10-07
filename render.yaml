@@ -1,0 +1,39 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# One web service; all app code lives in web/.
+services:
+  - type: web
+    name: tan-for-paypal
+    runtime: node
+    plan: free
+    rootDir: web
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/demo
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      # PayPal sandbox credentials: set these in the Render dashboard (never commit them).
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: PAYPAL_API_BASE
+        value: https://api-m.sandbox.paypal.com
+      # Optional: enables the AI verifier and agreement drafter. Without it the offline rules run.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: claude-sonnet-5-5
+      - key: BUYER_AGENT_MAX_AMOUNT
+        value: 500
+      # Shows the seed/reset tools on the home page. Remove for anything but a demo.
+      - key: DEMO_MODE
+        value: 1
+      # The free plan has an ephemeral disk, so the SQLite file resets on each deploy or
+      # restart (use "Load sample deals" to refill). For durable data upgrade the plan,
+      # add a disk mounted at /var/data, and set DATABASE_PATH=/var/data/tan.db.
+      - key: DATABASE_PATH
+        value: /tmp/tan.db
