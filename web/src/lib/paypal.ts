@@ -3,23 +3,34 @@
  * Uses fetch directly so there are no SDK version surprises.
  */
 
-const BASE = process.env.PAYPAL_API_BASE ?? "https://api-m.sandbox.paypal.com";
+import { simulatedFetch } from "./fakePaypal";
+
+const BASE = process.env.PAYPAL_API_BASE || "https://api-m.sandbox.paypal.com";
+
+/** PAYPAL_MODE=simulated swaps the network for the local simulator (see fakePaypal.ts). */
+export const isSimulated = () => process.env.PAYPAL_MODE === "simulated";
+const send = (url: string, init: RequestInit) => (isSimulated() ? simulatedFetch(url, init) : fetch(url, init));
 
 function requireEnv(name: string): string {
   const v = process.env[name];
-  if (!v) throw new Error(`Missing environment variable ${name}`);
+  if (!v) {
+    throw new Error(
+      `Missing environment variable ${name}. Add your PayPal sandbox credentials to .env.local, or set PAYPAL_MODE=simulated to try the flow without them.`,
+    );
+  }
   return v;
 }
 
 let cachedToken: { value: string; expiresAt: number } | undefined;
 
 export async function getAccessToken(): Promise<string> {
+  if (isSimulated()) return "SIM-TOKEN";
   if (cachedToken && cachedToken.expiresAt > Date.now() + 30_000) {
     return cachedToken.value;
   }
   const id = requireEnv("PAYPAL_CLIENT_ID");
   const secret = requireEnv("PAYPAL_CLIENT_SECRET");
-  const res = await fetch(`${BASE}/v1/oauth2/token`, {
+  const res = await send(`${BASE}/v1/oauth2/token`, {
     method: "POST",
     headers: {
       Authorization: `Basic ${Buffer.from(`${id}:${secret}`).toString("base64")}`,
@@ -38,7 +49,7 @@ async function ppFetch<T>(
   init: { method?: string; body?: unknown; requestId?: string } = {},
 ): Promise<T> {
   const token = await getAccessToken();
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await send(`${BASE}${path}`, {
     method: init.method ?? "GET",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -154,7 +165,7 @@ export async function voidAuthorization(authorizationId: string, dealId: string)
 
 /** Verify a webhook using PayPal's verify-webhook-signature endpoint. */
 export async function verifyWebhook(headers: Headers, rawBody: string): Promise<boolean> {
-  const webhookId = process.env.PAYPAL_WEBHOOK_ID;
+  const webhookId = isSimulated() ? "SIMULATED" : process.env.PAYPAL_WEBHOOK_ID;
   if (!webhookId) return false;
   const res = await ppFetch<{ verification_status: string }>(
     "/v1/notifications/verify-webhook-signature",

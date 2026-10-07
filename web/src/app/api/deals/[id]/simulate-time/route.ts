@@ -3,6 +3,8 @@ import { readJson } from "@/lib/http";
 import { dealRoute } from "@/lib/dealRoute";
 import { logEvent } from "@/lib/stateMachine";
 import { sweepExpiry } from "@/lib/expiry";
+import { isSimulated } from "@/lib/paypal";
+import { advanceSimClock } from "@/lib/fakePaypal";
 
 /**
  * Demo only (DEMO_MODE=1): move this deal's LOCAL authorization clocks back by N
@@ -25,6 +27,7 @@ export const POST = dealRoute(["buyer", "seller", "reviewer"], async (deal, req)
   p.authorizedAt = shift(p.authorizedAt);
   p.honorEndsAt = shift(p.honorEndsAt);
   p.validUntil = shift(p.validUntil);
+  if (isSimulated()) advanceSimClock(days); // keep the simulator consistent with the local clocks
   logEvent(deal, "DEMO_TIME_SHIFT", `Local authorization clocks moved back ${days} day(s)`, "system");
   sweepExpiry(deal);
   return NextResponse.json({ deal });
