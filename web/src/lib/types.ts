@@ -83,7 +83,14 @@ export interface Deal {
     currency: string;
     attempt: number;
   };
-  evidence?: { text: string; submittedAt: string };
+  evidence?: {
+    text: string;
+    submittedAt: string;
+    /** Uploaded images (stored apart from the deal; see /api/deals/[id]/attachments/[aid]). */
+    attachments?: { id: string; name: string; mime: string; size: number }[];
+    /** Links the seller cited, and whether the app opened them. */
+    links?: { url: string; status: "recorded" | "fetched" | "blocked" | "failed"; note?: string }[];
+  };
   verification?: VerificationResult;
   humanDecision?: { decision: "release" | "dispute"; note?: string; at: string };
   events: DealEvent[];

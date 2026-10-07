@@ -35,9 +35,13 @@ export function untrusted(tag: string, text: string): string {
   return `<${tag}>\n${safe}\n</${tag}>`;
 }
 
+export type ContentBlock =
+  | { type: "text"; text: string }
+  | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
+
 export async function callModelForJson(args: {
   system: string;
-  user: string;
+  user: string | ContentBlock[];
   toolName: string;
   toolDescription: string;
   inputSchema: Record<string, unknown>;

@@ -10,6 +10,7 @@ import { BuyerPanel } from "./BuyerPanel";
 import { SellerPanel } from "./SellerPanel";
 import { ReviewerPanel } from "./ReviewerPanel";
 import { SharePanel } from "./SharePanel";
+import { EvidenceCard } from "./EvidenceCard";
 
 export interface PanelProps {
   deal: Deal;
@@ -98,6 +99,7 @@ function DealView({ id, role }: { id: string; role: Role }) {
           {role === "buyer" && <BuyerPanel {...props} />}
           {role === "seller" && <SellerPanel {...props} />}
           {role === "reviewer" && <ReviewerPanel {...props} />}
+          <EvidenceCard deal={deal} />
           <VerdictCard deal={deal} />
           <AgreementCard deal={deal} />
         </div>

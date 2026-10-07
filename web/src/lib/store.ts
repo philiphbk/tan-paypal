@@ -37,6 +37,16 @@ function open(): Database.Database {
       reviewer TEXT NOT NULL,
       sample INTEGER NOT NULL DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS attachments (
+      id TEXT PRIMARY KEY,
+      deal_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      mime TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      data BLOB NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS attachments_deal ON attachments (deal_id);
     CREATE TABLE IF NOT EXISTS webhook_seen (event_id TEXT PRIMARY KEY, seen_at TEXT NOT NULL);
   `);
   return db;
@@ -136,6 +146,7 @@ export function deleteDeals(ids: string[]): void {
     for (const id of list) {
       db().prepare("DELETE FROM deals WHERE id = ?").run(id);
       db().prepare("DELETE FROM deal_access WHERE deal_id = ?").run(id);
+      db().prepare("DELETE FROM attachments WHERE deal_id = ?").run(id);
     }
   });
   del(ids);
@@ -145,7 +156,23 @@ export function deleteDeals(ids: string[]): void {
 export function deleteAllDeals(): void {
   db().prepare("DELETE FROM deals").run();
   db().prepare("DELETE FROM deal_access").run();
+  db().prepare("DELETE FROM attachments").run();
 }
+
+export interface AttachmentMeta { id: string; name: string; mime: string; size: number }
+
+export function saveAttachment(dealId: string, f: { name: string; mime: string; data: Buffer }): AttachmentMeta {
+  const id = randomUUID();
+  db()
+    .prepare("INSERT INTO attachments (id, deal_id, name, mime, size, data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .run(id, dealId, f.name, f.mime, f.data.length, f.data, new Date().toISOString());
+  return { id, name: f.name, mime: f.mime, size: f.data.length };
+}
+
+export const getAttachment = (dealId: string, id: string) =>
+  db().prepare("SELECT name, mime, size, data FROM attachments WHERE id = ? AND deal_id = ?").get(id, dealId) as
+    | { name: string; mime: string; size: number; data: Buffer }
+    | undefined;
 
 /**
  * Run `fn` with a freshly loaded deal while holding that deal's lock, and save

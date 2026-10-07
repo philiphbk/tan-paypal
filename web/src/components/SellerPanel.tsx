@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { api } from "@/lib/client";
+import { toJpeg } from "@/lib/images";
 import { money } from "@/lib/format";
 import type { Deal } from "@/lib/types";
 import type { PanelProps } from "./DealShell";
@@ -24,6 +25,24 @@ export function SellerPanel({ deal, busy, act }: PanelProps) {
   const [email, setEmail] = useState(deal.sellerEmail ?? "");
   const [text, setText] = useState("");
   const [asAgent, setAsAgent] = useState(false);
+  const [images, setImages] = useState<{ name: string; data: string; preview: string }[]>([]);
+  const [links, setLinks] = useState("");
+  const [fileError, setFileError] = useState("");
+
+  const pick = async (files: FileList | null) => {
+    setFileError("");
+    if (!files) return;
+    try {
+      const next = [...images];
+      for (const f of Array.from(files)) {
+        if (next.length >= 3) { setFileError("At most 3 images."); break; }
+        next.push(await toJpeg(f));
+      }
+      setImages(next);
+    } catch (e) {
+      setFileError((e as Error).message || "That file could not be read as an image.");
+    }
+  };
 
   switch (deal.state) {
     case "DRAFT":
@@ -79,6 +98,31 @@ export function SellerPanel({ deal, busy, act }: PanelProps) {
             <span>Evidence</span>
             <textarea className="textarea" value={text} onChange={(e) => setText(e.target.value)} placeholder="Paste links, tracking numbers, test output, screenshots…" />
           </label>
+          <div className="form-grid" style={{ marginTop: 12 }}>
+            <label className="field">
+              <span>Screenshots or photos (up to 3)</span>
+              <input className="input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
+            </label>
+            <label className="field">
+              <span>Links (https, one per line)</span>
+              <textarea className="textarea" style={{ minHeight: 44 }} value={links} onChange={(e) => setLinks(e.target.value)} placeholder="https://…" />
+            </label>
+          </div>
+          {fileError && <div className="callout bad small" role="alert" style={{ marginTop: 8 }}>{fileError}</div>}
+          {images.length > 0 && (
+            <div className="row" style={{ marginTop: 10 }}>
+              {images.map((im, i) => (
+                <div key={i} style={{ position: "relative" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={im.preview} alt={`Selected: ${im.name}`} style={{ height: 72, borderRadius: 8, border: "1px solid var(--line)" }} />
+                  <button className="btn ghost sm" style={{ position: "absolute", top: -8, right: -8, padding: "0 7px" }} aria-label={`Remove ${im.name}`} onClick={() => setImages(images.filter((_, j) => j !== i))}>×</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="small muted" style={{ margin: "8px 0 0" }}>
+            Links are recorded for the reviewer. They are only opened by the verifier if the host enabled that, and a bare link proves nothing on its own.
+          </p>
           <div className="spread" style={{ marginTop: 12 }}>
             <div className="seg" role="group" aria-label="Submitted by">
               <button aria-pressed={!asAgent} onClick={() => setAsAgent(false)}>Me</button>
@@ -86,8 +130,17 @@ export function SellerPanel({ deal, busy, act }: PanelProps) {
             </div>
             <button
               className="btn primary"
-              disabled={busy || !text.trim()}
-              onClick={() => act(() => api(`/api/deals/${deal.id}/evidence`, { text, actor: asAgent ? "seller_agent" : "human_seller" }))}
+              disabled={busy || (!text.trim() && images.length === 0)}
+              onClick={() =>
+                act(() =>
+                  api(`/api/deals/${deal.id}/evidence`, {
+                    text,
+                    actor: asAgent ? "seller_agent" : "human_seller",
+                    images: images.map(({ name, data }) => ({ name, data })),
+                    links: links.split("\n").map((l) => l.trim()).filter(Boolean),
+                  }),
+                )
+              }
             >
               {busy ? "Verifying…" : "Submit for verification"}
             </button>

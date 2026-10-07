@@ -169,6 +169,41 @@ test("webhooks: bad signatures are rejected, valid ones apply once", async () =>
   assert.equal((await json(await send("SIMULATED"))).duplicate, true);
 });
 
+const PNG_1PX = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
+test("image and link evidence: stored privately, served only to link holders, links not opened by default", async () => {
+  const { GET: attachment } = await import("../../app/api/deals/[id]/attachments/[aid]/route");
+  const c = await funded();
+  const res = await call(evidence, c.id, {
+    keys: c.as("seller"),
+    body: { text: GOOD, images: [{ name: "proof.png", data: PNG_1PX }], links: ["https://example.com/proof"] },
+  });
+  const deal = (await json(res)).deal;
+  assert.equal(deal.state, "CAPTURED");
+  assert.equal(deal.evidence.attachments.length, 1);
+  assert.equal(deal.evidence.attachments[0].mime, "image/png");
+  assert.deepEqual(deal.evidence.links, [{ url: "https://example.com/proof", status: "recorded", note: "Not opened" }]);
+  assert.ok(!JSON.stringify(deal).includes(PNG_1PX), "image bytes are not stored in the deal JSON");
+
+  const aid = deal.evidence.attachments[0].id;
+  const get = (keys?: string) => attachment(new Request("http://x", { headers: { "x-deal-keys": keys ?? "" } }), { params: Promise.resolve({ id: c.id, aid }) });
+  assert.equal((await get()).status, 403);
+  const ok = await get(c.as("buyer"));
+  assert.equal(ok.status, 200);
+  assert.equal(ok.headers.get("content-type"), "image/png");
+  assert.match(ok.headers.get("content-security-policy") ?? "", /sandbox/);
+  assert.equal(Buffer.from(await ok.arrayBuffer()).toString("base64"), PNG_1PX);
+});
+
+test("disguised or oversized uploads are rejected before anything is stored", async () => {
+  const c = await funded();
+  const fake = await call(evidence, c.id, { keys: c.as("seller"), body: { text: GOOD, images: [{ name: "a.png", data: Buffer.from("<html>").toString("base64") }] } });
+  assert.equal(fake.status, 400);
+  const badLink = await call(evidence, c.id, { keys: c.as("seller"), body: { text: GOOD, links: ["javascript:alert(1)"] } });
+  assert.equal(badLink.status, 400);
+  assert.equal((await read(c)).state, "FUNDS_AUTHORIZED", "a rejected submission leaves the deal untouched");
+});
+
 test("the rate limiter protects the AI endpoint", async () => {
   delete process.env.RATE_LIMIT_DISABLED;
   rl.resetRateLimits();

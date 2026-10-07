@@ -26,15 +26,9 @@ export function ReviewerPanel({ deal, busy, act }: PanelProps) {
       <h3>Your call: release or refund</h3>
       <p className="muted">
         The AI was not confident enough to move {money(deal.agreement.amount, deal.agreement.currency)} on its own. Read the verdict and the
-        evidence, then decide. Your decision is final and goes on the receipt.
+        evidence below, then decide. Your decision is final and goes on the receipt.
       </p>
       {withheld?.detail && <p className="callout warn small">Why it was withheld: {withheld.detail}</p>}
-      {deal.evidence && (
-        <details style={{ marginBottom: 12 }} open>
-          <summary>Evidence submitted by the seller</summary>
-          <pre className="callout" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", marginTop: 8 }}>{deal.evidence.text}</pre>
-        </details>
-      )}
       <label className="field">
         <span>Note (kept on the receipt)</span>
         <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Why you decided this" />
