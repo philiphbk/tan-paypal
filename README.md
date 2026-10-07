@@ -45,9 +45,9 @@ npm run dev
 - [x] Agreement builder (free text to structured JSON)
 - [x] Payouts to the seller
 - [x] Authorization expiry and reauthorization handling
-- [ ] Buyer and seller views with a live timeline
-- [ ] Outcome receipt page
-- [ ] AG Grid transaction ledger
+- [x] Buyer and seller views with a live timeline
+- [x] Outcome receipt page
+- [x] AG Grid transaction ledger
 - [ ] Deploy to Render
 
 ## License

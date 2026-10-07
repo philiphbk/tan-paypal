@@ -16,8 +16,8 @@ export const POST = dealRoute(async (deal, _req) => {
         amount: deal.agreement.amount,
         currency: deal.agreement.currency,
         description: deal.agreement.title,
-        returnUrl: `${base}/?deal=${deal.id}&approved=1`,
-        cancelUrl: `${base}/?deal=${deal.id}&cancelled=1`,
+        returnUrl: `${base}/deals/${deal.id}/buyer?approved=1`,
+        cancelUrl: `${base}/deals/${deal.id}/buyer?cancelled=1`,
       });
       deal.paypal.orderId = orderId;
       deal.paypal.approveUrl = approveUrl;
