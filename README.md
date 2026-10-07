@@ -15,7 +15,7 @@ Money should move when a deal's conditions are met, not before. This app sits on
 
 - Orders v2: create (`AUTHORIZE`), authorize, capture the authorization
 - Webhooks: signature verification and idempotent event handling
-- Payouts (planned): pay the seller out in the freelance scenario
+- Payouts v1: pay the seller out after capture (freelance scenario). Enable the Payouts feature on your sandbox REST app.
 
 ## Status
 
@@ -43,7 +43,7 @@ npm run dev
 ## Roadmap
 
 - [x] Agreement builder (free text to structured JSON)
-- [ ] Payouts to the seller
+- [x] Payouts to the seller
 - [x] Authorization expiry and reauthorization handling
 - [ ] Buyer and seller views with a live timeline
 - [ ] Outcome receipt page

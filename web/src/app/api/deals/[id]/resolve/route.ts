@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { payoutSeller } from "@/lib/payout";
 import { getDeal } from "@/lib/store";
 import { logEvent, transition } from "@/lib/stateMachine";
 import { captureAuthorization, voidAuthorization } from "@/lib/paypal";
@@ -27,6 +28,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       deal.paypal.captureId = cap.captureId;
       logEvent(deal, "PAYPAL_CAPTURED", `${cap.captureId} (human override)`, "paypal");
       transition(deal, "CAPTURED", "Human released payment", "human_reviewer");
+      await payoutSeller(deal);
     } else {
       await voidAuthorization(deal.paypal.authorizationId as string, deal.id);
       logEvent(deal, "PAYPAL_VOIDED", "human decision", "paypal");

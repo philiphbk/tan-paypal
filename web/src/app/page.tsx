@@ -21,7 +21,7 @@ async function api<T>(url: string, body?: unknown): Promise<T> {
 export default function Home() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({ title: "", amount: "25.00", criteria: "", description: "", deliverables: "", deadline: "", currency: "USD" });
+  const [form, setForm] = useState({ title: "", amount: "25.00", criteria: "", description: "", deliverables: "", deadline: "", currency: "USD", sellerEmail: "" });
   const [freeText, setFreeText] = useState("");
   const [draftInfo, setDraftInfo] = useState<{ source: string; warnings: string[] } | null>(null);
   const [evidence, setEvidence] = useState<Record<string, string>>({});
@@ -73,7 +73,8 @@ export default function Home() {
             run(async () => {
               const r = await api<{ agreement: Record<string, unknown> & { deliverables: string[]; acceptanceCriteria: string[] }; source: string; warnings: string[] }>("/api/agreements/draft", { description: freeText });
               const a = r.agreement;
-              setForm({
+              setForm((f) => ({
+                ...f,
                 title: String(a.title ?? ""),
                 description: String(a.description ?? ""),
                 amount: String(a.amount ?? ""),
@@ -81,7 +82,7 @@ export default function Home() {
                 deadline: String(a.deadline ?? ""),
                 deliverables: a.deliverables.join("\n"),
                 criteria: a.acceptanceCriteria.join("\n"),
-              });
+              }));
               setDraftInfo({ source: r.source, warnings: r.warnings });
             })
           }
@@ -100,6 +101,7 @@ export default function Home() {
           <input style={{ ...input, maxWidth: 90 }} placeholder="USD" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} />
           <input style={input} type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} />
         </div>
+        <input style={input} type="email" placeholder="Seller PayPal email (sandbox, for the payout after capture)" value={form.sellerEmail} onChange={(e) => setForm({ ...form, sellerEmail: e.target.value })} />
         <textarea style={{ ...input, minHeight: 50 }} placeholder="Deliverables, one per line" value={form.deliverables} onChange={(e) => setForm({ ...form, deliverables: e.target.value })} />
         <textarea style={{ ...input, minHeight: 70 }} placeholder="Acceptance criteria, one per line" value={form.criteria} onChange={(e) => setForm({ ...form, criteria: e.target.value })} />
         <button
@@ -113,6 +115,7 @@ export default function Home() {
                 amount: form.amount,
                 currency: form.currency,
                 deadline: form.deadline || undefined,
+                sellerEmail: form.sellerEmail || undefined,
                 deliverables: lines(form.deliverables),
                 acceptanceCriteria: lines(form.criteria),
                 proposer: draftInfo ? "buyer_agent" : "human_buyer",
@@ -165,6 +168,12 @@ export default function Home() {
                 Submit evidence for AI check
               </button>
             </>
+          )}
+
+          {d.payout && (
+            <p>
+              <strong>Seller payout:</strong> {d.payout.amount} {d.payout.currency} to {d.payout.receiver} — {d.payout.batchStatus}
+            </p>
           )}
 
           {d.state === "EXPIRED" && (

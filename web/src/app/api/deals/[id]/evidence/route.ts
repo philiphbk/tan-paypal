@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { payoutSeller } from "@/lib/payout";
 import { getDeal } from "@/lib/store";
 import { logEvent, transition } from "@/lib/stateMachine";
 import { verifyEvidence } from "@/lib/verifier";
@@ -58,6 +59,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     deal.paypal.captureId = cap.captureId;
     logEvent(deal, "PAYPAL_CAPTURED", `${cap.captureId} (${cap.status})`, "paypal");
     transition(deal, "CAPTURED", "Payment released to seller", "buyer_agent");
+    await payoutSeller(deal);
   } catch (err) {
     if (err instanceof HoldExpiredError) {
       return NextResponse.json({ deal, error: err.message }, { status: 409 });

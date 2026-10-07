@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createDeal, listDeals } from "@/lib/store";
+import { isEmail } from "@/lib/payout";
 import { sweepExpiry } from "@/lib/expiry";
 import { AgreementValidationError, validateAgreementDraft } from "@/lib/agreementBuilder";
 
@@ -28,6 +29,10 @@ export async function POST(req: Request) {
     throw err;
   }
   const proposer = body?.proposer === "buyer_agent" ? "buyer_agent" : "human_buyer";
+  if (body?.sellerEmail && !isEmail(body.sellerEmail)) {
+    return NextResponse.json({ error: "sellerEmail is not a valid email" }, { status: 400 });
+  }
   const deal = createDeal(draft, "Buyer", "Seller", proposer);
+  if (body?.sellerEmail) deal.sellerEmail = body.sellerEmail;
   return NextResponse.json({ deal }, { status: 201 });
 }

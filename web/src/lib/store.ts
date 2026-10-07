@@ -42,6 +42,10 @@ export function findDealByOrderId(orderId: string): Deal | undefined {
   return [...deals.values()].find((d) => d.paypal.orderId === orderId);
 }
 
+export function findDealByPayoutBatchId(batchId: string): Deal | undefined {
+  return [...deals.values()].find((d) => d.payout?.batchId === batchId);
+}
+
 /** Returns true the first time an event id is seen (idempotent webhook handling). */
 export function markWebhookSeen(eventId: string): boolean {
   if (webhookSeen.has(eventId)) return false;

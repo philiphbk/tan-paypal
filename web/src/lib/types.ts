@@ -70,6 +70,17 @@ export interface Deal {
     validUntil?: string;
     reauthCount?: number;
   };
+  /** Seller's PayPal account email; the freelance payout goes here after capture. */
+  sellerEmail?: string;
+  payout?: {
+    batchId: string;
+    batchStatus: string;
+    itemStatus?: string;
+    receiver: string;
+    amount: string;
+    currency: string;
+    attempt: number;
+  };
   evidence?: { text: string; submittedAt: string };
   verification?: VerificationResult;
   humanDecision?: { decision: "release" | "dispute"; note?: string; at: string };

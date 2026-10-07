@@ -173,3 +173,53 @@ export async function verifyWebhook(headers: Headers, rawBody: string): Promise<
   );
   return res.verification_status === "SUCCESS";
 }
+
+/**
+ * Payouts v1: send the captured funds on to the seller. Two layers of
+ * idempotency: the PayPal-Request-Id header and a unique sender_batch_id.
+ */
+export async function createPayout(args: {
+  dealId: string;
+  attempt: number;
+  receiverEmail: string;
+  amount: string;
+  currency: string;
+  note: string;
+}) {
+  const batchKey = `tan-${args.dealId}-${args.attempt}`;
+  const res = await ppFetch<{ batch_header: { payout_batch_id: string; batch_status: string } }>(
+    "/v1/payments/payouts",
+    {
+      method: "POST",
+      requestId: `payout-${args.dealId}-${args.attempt}`,
+      body: {
+        sender_batch_header: {
+          sender_batch_id: batchKey,
+          email_subject: "You have been paid for a verified delivery",
+          email_message: args.note.slice(0, 1000),
+        },
+        items: [
+          {
+            recipient_type: "EMAIL",
+            receiver: args.receiverEmail,
+            amount: { value: args.amount, currency: args.currency },
+            note: args.note.slice(0, 4000),
+            sender_item_id: batchKey,
+          },
+        ],
+      },
+    },
+  );
+  return { batchId: res.batch_header.payout_batch_id, batchStatus: res.batch_header.batch_status };
+}
+
+export async function getPayoutBatch(batchId: string) {
+  const res = await ppFetch<{
+    batch_header: { payout_batch_id: string; batch_status: string };
+    items?: { transaction_status?: string }[];
+  }>(`/v1/payments/payouts/${batchId}`);
+  return {
+    batchStatus: res.batch_header.batch_status,
+    itemStatus: res.items?.[0]?.transaction_status,
+  };
+}

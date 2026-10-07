@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDeal } from "@/lib/store";
 import { logEvent, transition } from "@/lib/stateMachine";
+import { isEmail } from "@/lib/payout";
 import { sellerAgentReview } from "@/lib/agents";
 
 /**
@@ -14,6 +15,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: `Deal is ${deal.state}, expected DRAFT` }, { status: 409 });
   }
   const body = await req.json().catch(() => null);
+  if (body?.sellerEmail !== undefined) {
+    if (!isEmail(body.sellerEmail)) {
+      return NextResponse.json({ error: "sellerEmail is not a valid email" }, { status: 400 });
+    }
+    deal.sellerEmail = body.sellerEmail;
+  }
   const actor = body?.actor === "human_seller" ? "human_seller" : "seller_agent";
 
   if (actor === "seller_agent") {

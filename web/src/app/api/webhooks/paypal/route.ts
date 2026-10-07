@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { findDealByOrderId, markWebhookSeen } from "@/lib/store";
+import { findDealByOrderId, findDealByPayoutBatchId, markWebhookSeen } from "@/lib/store";
 import { logEvent } from "@/lib/stateMachine";
 import { verifyWebhook } from "@/lib/paypal";
 
@@ -23,6 +23,7 @@ export async function POST(req: Request) {
     event_type: string;
     resource?: {
       id?: string;
+      batch_header?: { payout_batch_id?: string; batch_status?: string };
       custom_id?: string;
       supplementary_data?: { related_ids?: { order_id?: string } };
     };
@@ -31,7 +32,15 @@ export async function POST(req: Request) {
   if (!markWebhookSeen(event.id)) return NextResponse.json({ ok: true, duplicate: true });
 
   const orderId = event.resource?.supplementary_data?.related_ids?.order_id;
-  const deal = orderId ? findDealByOrderId(orderId) : undefined;
+  const payoutBatchId = event.resource?.batch_header?.payout_batch_id;
+  const deal = orderId
+    ? findDealByOrderId(orderId)
+    : payoutBatchId
+      ? findDealByPayoutBatchId(payoutBatchId)
+      : undefined;
+  if (deal?.payout && event.resource?.batch_header?.batch_status) {
+    deal.payout.batchStatus = event.resource.batch_header.batch_status;
+  }
   if (deal) logEvent(deal, `WEBHOOK_${event.event_type}`, event.resource?.id, "paypal");
 
   return NextResponse.json({ ok: true });
