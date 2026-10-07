@@ -12,8 +12,9 @@ const OUTCOME: Record<string, { stamp: string; tone: "ok" | "bad" | "warn"; line
   EXPIRED: { stamp: "Expired", tone: "bad", line: "The PayPal hold expired before the deal completed." },
 };
 
-export default function Receipt({ params }: { params: { id: string } }) {
-  const deal = getDeal(params.id);
+export default async function Receipt({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const deal = getDeal(id);
   if (!deal) notFound();
   const o = OUTCOME[deal.state] ?? { stamp: "In progress", tone: "warn" as const, line: "This deal has not reached a final outcome yet." };
   const v = deal.verification;

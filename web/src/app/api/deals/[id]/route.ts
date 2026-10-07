@@ -4,8 +4,9 @@ import { sweepExpiry } from "@/lib/expiry";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
-  const res = await withDeal(params.id, async (deal) => {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const res = await withDeal(id, async (deal) => {
     sweepExpiry(deal);
     return NextResponse.json({ deal });
   });

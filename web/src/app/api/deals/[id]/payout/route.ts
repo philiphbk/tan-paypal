@@ -13,8 +13,9 @@ export const POST = dealRoute(async (deal) => {
 });
 
 /** Refresh the payout status from PayPal. */
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
-  const res = await withDeal(params.id, async (deal) => {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const res = await withDeal(id, async (deal) => {
     try {
       await syncPayout(deal);
       return NextResponse.json({ deal });

@@ -59,7 +59,7 @@ From the [PayPal docs](https://developer.paypal.com/docs/checkout/standard/custo
 
 ## Run it
 
-Requires Node 18.18+ (20 recommended).
+Requires Node 20.9+ (22 recommended).
 
 ```bash
 git clone <this repo>
@@ -126,7 +126,7 @@ web/src
   app/ledger               AG Grid ledger
 ```
 
-Stack: Next.js 14 (App Router), TypeScript, SQLite (better-sqlite3), AG Grid Community. No UI framework; the design system is plain CSS with light and dark themes.
+Stack: Next.js 16 (App Router), TypeScript, SQLite (better-sqlite3), AG Grid Community. No UI framework; the design system is plain CSS with light and dark themes.
 
 ## How this was built during the submission period
 
