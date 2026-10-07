@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readJson } from "@/lib/http";
 import { dealRoute } from "@/lib/dealRoute";
 import { logEvent, transition } from "@/lib/stateMachine";
 import { isEmail } from "@/lib/payout";
@@ -8,11 +9,11 @@ import { sellerAgentReview } from "@/lib/agents";
  * Seller side of the handshake (DRAFT -> AGREED). The seller agent reviews the
  * proposal and may decline it with reasons; a human seller can accept directly.
  */
-export const POST = dealRoute(async (deal, req) => {
+export const POST = dealRoute(["seller"], async (deal, req) => {
     if (deal.state !== "DRAFT") {
       return NextResponse.json({ error: `Deal is ${deal.state}, expected DRAFT` }, { status: 409 });
     }
-    const body = await req.json().catch(() => null);
+    const body = await readJson(req);
     if (body?.sellerEmail !== undefined) {
       if (!isEmail(body.sellerEmail)) {
         return NextResponse.json({ error: "sellerEmail is not a valid email" }, { status: 400 });

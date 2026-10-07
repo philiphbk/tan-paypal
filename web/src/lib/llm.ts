@@ -9,6 +9,21 @@ const API_URL = "https://api.anthropic.com/v1/messages";
 
 export const llmEnabled = () => Boolean(process.env.ANTHROPIC_API_KEY);
 
+/**
+ * Hard daily ceiling on model calls (LLM_DAILY_CAP, default 300) so a public
+ * demo cannot run up the bill. When it is reached, callers see an error and
+ * fall back to their offline rules.
+ */
+const g = globalThis as unknown as { __llmUse?: { day: string; n: number } };
+export function spendLlmBudget(now = new Date()) {
+  const day = now.toISOString().slice(0, 10);
+  const use = (g.__llmUse = g.__llmUse?.day === day ? g.__llmUse : { day, n: 0 });
+  const cap = Number(process.env.LLM_DAILY_CAP || 300);
+  if (use.n >= cap) throw new Error("Daily AI budget reached; using offline rules");
+  use.n += 1;
+}
+export const resetLlmBudget = () => { g.__llmUse = undefined; };
+
 export const modelName = () => process.env.AI_MODEL ?? "claude-sonnet-5-5";
 
 /**
@@ -28,6 +43,7 @@ export async function callModelForJson(args: {
   inputSchema: Record<string, unknown>;
   maxTokens?: number;
 }): Promise<unknown> {
+  spendLlmBudget();
   const res = await fetch(API_URL, {
     method: "POST",
     headers: {

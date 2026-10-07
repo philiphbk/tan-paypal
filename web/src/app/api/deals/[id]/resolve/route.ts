@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readJson } from "@/lib/http";
 import { payoutSeller } from "@/lib/payout";
 import { dealRoute } from "@/lib/dealRoute";
 import { logEvent, transition } from "@/lib/stateMachine";
@@ -6,14 +7,14 @@ import { captureAuthorization, voidAuthorization } from "@/lib/paypal";
 import { ensureCapturable, HoldExpiredError, sweepExpiry } from "@/lib/expiry";
 
 /** Human override for a disputed deal: release (capture) or refund (void the hold). */
-export const POST = dealRoute(async (deal, req) => {
+export const POST = dealRoute(["reviewer"], async (deal, req) => {
     if (deal.state !== "DISPUTED") {
       return NextResponse.json({ error: `Deal is ${deal.state}, expected DISPUTED` }, { status: 409 });
     }
     if (sweepExpiry(deal)) {
       return NextResponse.json({ deal, error: new HoldExpiredError().message }, { status: 409 });
     }
-    const body = await req.json().catch(() => null);
+    const body = await readJson(req);
     const decision = body?.decision;
     if (decision !== "release" && decision !== "refund" && decision !== "dispute") {
       return NextResponse.json({ error: 'decision must be "release" or "refund"' }, { status: 400 });

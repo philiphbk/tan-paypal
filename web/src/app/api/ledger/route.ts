@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { listDeals } from "@/lib/store";
+import { visibleDeals } from "@/lib/visibility";
 
 export const dynamic = "force-dynamic";
 
 /** Flat rows for the AG Grid ledger: one per deal, per criterion check, and per audit event. */
-export async function GET() {
-  const deals = listDeals();
+export async function GET(req: Request) {
+  const deals = await visibleDeals(req);
   const transactions = deals.map((d) => ({
     id: d.id,
     title: d.agreement.title,

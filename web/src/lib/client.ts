@@ -2,11 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Deal } from "./types";
+import { getReviewerKey, keysHeader } from "./keys";
 
 export async function api<T = unknown>(url: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
     method: body === undefined ? "GET" : "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-deal-keys": keysHeader(),
+      "x-reviewer-key": getReviewerKey(),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const json = await res.json().catch(() => ({}));

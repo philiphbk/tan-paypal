@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import type { Actor, Agreement, Deal } from "./types";
+import { hashTokens, newTokens, type Role } from "./access";
 
 /**
  * SQLite-backed store. Same functions as the old in-memory store, plus
@@ -29,6 +30,13 @@ function open(): Database.Database {
     );
     CREATE INDEX IF NOT EXISTS deals_order ON deals (json_extract(data, '$.paypal.orderId'));
     CREATE INDEX IF NOT EXISTS deals_payout ON deals (json_extract(data, '$.payout.batchId'));
+    CREATE TABLE IF NOT EXISTS deal_access (
+      deal_id TEXT PRIMARY KEY,
+      buyer TEXT NOT NULL,
+      seller TEXT NOT NULL,
+      reviewer TEXT NOT NULL,
+      sample INTEGER NOT NULL DEFAULT 0
+    );
     CREATE TABLE IF NOT EXISTS webhook_seen (event_id TEXT PRIMARY KEY, seen_at TEXT NOT NULL);
   `);
   return db;
@@ -92,9 +100,44 @@ export function markWebhookSeen(eventId: string): boolean {
   return res.changes === 1;
 }
 
+/** Issue capability tokens for a deal. Only hashes are stored; the raw tokens are returned once. */
+export function issueAccess(dealId: string, opts: { sample?: boolean } = {}): Record<Role, string> {
+  const tokens = newTokens();
+  const h = hashTokens(tokens);
+  db()
+    .prepare(
+      `INSERT OR REPLACE INTO deal_access (deal_id, buyer, seller, reviewer, sample) VALUES (?, ?, ?, ?, ?)`,
+    )
+    .run(dealId, h.buyer, h.seller, h.reviewer, opts.sample ? 1 : 0);
+  return tokens;
+}
+
+export function getAccessHashes(dealId: string): Record<Role, string> | undefined {
+  return db().prepare("SELECT buyer, seller, reviewer FROM deal_access WHERE deal_id = ?").get(dealId) as
+    | Record<Role, string>
+    | undefined;
+}
+
+export const isSampleDeal = (dealId: string): boolean =>
+  Boolean((db().prepare("SELECT sample FROM deal_access WHERE deal_id = ?").get(dealId) as { sample: number } | undefined)?.sample);
+
+export const sampleDealIds = (): string[] =>
+  (db().prepare("SELECT deal_id FROM deal_access WHERE sample = 1").all() as { deal_id: string }[]).map((r) => r.deal_id);
+
+export function deleteDeals(ids: string[]): void {
+  const del = db().transaction((list: string[]) => {
+    for (const id of list) {
+      db().prepare("DELETE FROM deals WHERE id = ?").run(id);
+      db().prepare("DELETE FROM deal_access WHERE deal_id = ?").run(id);
+    }
+  });
+  del(ids);
+}
+
 /** Remove every deal (demo reset). Webhook ids are kept so replays stay ignored. */
 export function deleteAllDeals(): void {
   db().prepare("DELETE FROM deals").run();
+  db().prepare("DELETE FROM deal_access").run();
 }
 
 /**

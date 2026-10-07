@@ -7,7 +7,7 @@ import { honorPeriodLapsed, reauthorize, sweepExpiry } from "@/lib/expiry";
  * period has not. Capture paths do this automatically; this endpoint lets a
  * person or agent do it ahead of time.
  */
-export const POST = dealRoute(async (deal, _req) => {
+export const POST = dealRoute(["buyer"], async (deal, _req) => {
     if (sweepExpiry(deal)) {
       return NextResponse.json({ deal, error: "Hold expired; use /renew to fund again" }, { status: 409 });
     }

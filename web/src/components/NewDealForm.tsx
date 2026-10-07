@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/lib/client";
+import { addKeys } from "@/lib/keys";
 
 interface Draft {
   agreement: { title: string; description: string; amount: string; currency: string; deadline?: string; deliverables: string[]; acceptanceCriteria: string[] };
@@ -40,12 +41,14 @@ export function NewDealForm({ onCreated }: { onCreated: () => void }) {
     if (!f) return;
     setBusy(true); setError("");
     try {
-      const r = await api<{ deal: { id: string } }>("/api/deals", {
+      const r = await api<{ deal: { id: string }; keys: { buyer: string; seller: string; reviewer: string } }>("/api/deals", {
         title: f.title, description: f.description, amount: f.amount, currency: f.currency,
         deadline: f.deadline || undefined, sellerEmail: f.sellerEmail || undefined,
         deliverables: lines(f.deliverables), acceptanceCriteria: lines(f.criteria),
         proposer: info ? "buyer_agent" : "human_buyer",
       });
+      // The creator holds all three links in this browser; share them from the deal page.
+      addKeys(r.deal.id, r.keys);
       onCreated();
       router.push(`/deals/${r.deal.id}/seller`);
     } catch (e) { setError((e as Error).message); setBusy(false); }

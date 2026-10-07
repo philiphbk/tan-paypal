@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { readJson } from "@/lib/http";
+import { rateLimit } from "@/lib/rateLimit";
 import { AgreementValidationError, buildAgreement } from "@/lib/agreementBuilder";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +11,9 @@ export const dynamic = "force-dynamic";
  * via POST /api/deals.
  */
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => null);
+  const limited = rateLimit(req, "llm");
+  if (limited) return limited;
+  const body = await readJson(req);
   const description = typeof body?.description === "string" ? body.description : "";
   try {
     const result = await buildAgreement(description);

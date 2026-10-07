@@ -8,7 +8,7 @@ import { sweepExpiry } from "@/lib/expiry";
  * the old PayPal references are cleared and the next /pay call creates a fresh
  * order under a new idempotency key.
  */
-export const POST = dealRoute(async (deal, _req) => {
+export const POST = dealRoute(["buyer"], async (deal, _req) => {
     sweepExpiry(deal);
     if (deal.state !== "EXPIRED") {
       return NextResponse.json({ error: `Deal is ${deal.state}, expected EXPIRED` }, { status: 409 });

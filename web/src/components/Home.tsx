@@ -3,10 +3,18 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import { addKeys, forgetDeals, heldRoles } from "@/lib/keys";
 import { dateTime, money } from "@/lib/format";
 import type { Deal } from "@/lib/types";
 import { StateBadge } from "./parts";
 import { NewDealForm } from "./NewDealForm";
+
+/** Open a deal in the view that suits its state, among the roles this browser holds. */
+function pickRole(d: Deal): string {
+  const held = heldRoles(d.id);
+  const want = d.state === "DRAFT" ? "seller" : d.state === "DISPUTED" ? "reviewer" : "buyer";
+  return held.includes(want) || held.length === 0 ? want : held[0];
+}
 
 export function Home() {
   const [deals, setDeals] = useState<Deal[] | null>(null);
@@ -23,7 +31,14 @@ export function Home() {
   const demoAction = async (path: string) => {
     setDemoBusy(true);
     try {
-      await api(path, {});
+      if (path.endsWith("/seed")) {
+        const r = await api<{ keys: Record<string, { buyer: string; seller: string; reviewer: string }> }>(path, {});
+        Object.entries(r.keys).forEach(([id, k]) => addKeys(id, k));
+      } else {
+        const before = deals?.map((d) => d.id) ?? [];
+        await api(path, {});
+        forgetDeals(before);
+      }
       await refresh();
     } finally {
       setDemoBusy(false);
@@ -63,7 +78,7 @@ export function Home() {
         )}
         <div className="deal-list">
           {deals?.slice(0, 9).map((d) => (
-            <Link key={d.id} href={`/deals/${d.id}/${d.state === "DRAFT" ? "seller" : "buyer"}`} className="card deal-card">
+            <Link key={d.id} href={`/deals/${d.id}/${pickRole(d)}`} className="card deal-card">
               <div className="spread">
                 <StateBadge state={d.state} />
                 <span className="small muted">{dateTime(d.updatedAt)}</span>
@@ -80,7 +95,7 @@ export function Home() {
           <div className="spread">
             <div>
               <strong>Demo tools</strong>
-              <div className="small muted">Sample deals are labelled SEED- and never touch PayPal.</div>
+              <div className="small muted">Sample deals are public, labelled SEED- and never touch PayPal. Reset removes the samples and your own deals only.</div>
             </div>
             <div className="row">
               <button className="btn ghost sm" disabled={demoBusy} onClick={() => demoAction("/api/demo/seed")}>Load sample deals</button>

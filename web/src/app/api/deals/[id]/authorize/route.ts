@@ -5,7 +5,7 @@ import { authorizeOrder } from "@/lib/paypal";
 import { setAuthWindow } from "@/lib/expiry";
 
 /** Step 2 of the hold: after buyer approval, authorize the order (funds reserved). */
-export const POST = dealRoute(async (deal, _req) => {
+export const POST = dealRoute(["buyer"], async (deal, _req) => {
     if (!deal.paypal.orderId) {
       return NextResponse.json({ error: "No PayPal order yet; call /pay first" }, { status: 409 });
     }

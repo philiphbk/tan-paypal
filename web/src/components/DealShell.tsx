@@ -1,22 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, useDeal } from "@/lib/client";
+import { absorbKeyFromUrl, heldRoles, type Role } from "@/lib/keys";
 import type { Deal } from "@/lib/types";
 import { AgreementCard, DealHeader, HoldCard, Rail, Timeline, VerdictCard } from "./parts";
 import { BuyerPanel } from "./BuyerPanel";
 import { SellerPanel } from "./SellerPanel";
+import { ReviewerPanel } from "./ReviewerPanel";
+import { SharePanel } from "./SharePanel";
 
 export interface PanelProps {
   deal: Deal;
   busy: boolean;
+  held: Role[];
   act: (fn: () => Promise<unknown>) => Promise<void>;
 }
 
-export function DealShell({ id, role }: { id: string; role: "buyer" | "seller" }) {
+const ROLE_LABEL: Record<Role, string> = { buyer: "Buyer view", seller: "Seller view", reviewer: "Reviewer view" };
+
+/** Reads any ?k= access link from the URL before the deal is first requested. */
+export function DealShell({ id, role }: { id: string; role: Role }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    absorbKeyFromUrl(id);
+    setReady(true);
+  }, [id]);
+  if (!ready) return <main className="wrap page"><div className="skeleton" style={{ width: "40%", height: 40 }} /></main>;
+  return <DealView id={id} role={role} />;
+}
+
+function DealView({ id, role }: { id: string; role: Role }) {
   const { deal, error, setError, busy, act } = useDeal(id);
   const returned = useRef(false);
+  const held = heldRoles(id);
 
   // PayPal sends the buyer back with ?approved=1; finish the authorization once.
   useEffect(() => {
@@ -38,15 +56,27 @@ export function DealShell({ id, role }: { id: string; role: "buyer" | "seller" }
   if (!deal) {
     return (
       <main className="wrap page">
-        {error ? <div className="callout bad">{error}</div> : <div className="stack"><div className="skeleton" style={{ width: "40%", height: 40 }} /><div className="skeleton" /><div className="skeleton" style={{ width: "70%" }} /></div>}
+        {error ? (
+          <div className="callout bad" role="alert">
+            <strong>{error}</strong>
+            <p className="small" style={{ margin: "6px 0 0" }}>
+              Deals are private. Open the link you were given for this deal (it ends in <span className="mono">?k=…</span>), or{" "}
+              <Link href="/">start a new deal</Link>.
+            </p>
+          </div>
+        ) : (
+          <div className="stack"><div className="skeleton" style={{ width: "40%", height: 40 }} /><div className="skeleton" /><div className="skeleton" style={{ width: "70%" }} /></div>
+        )}
       </main>
     );
   }
 
-  const other = role === "buyer" ? "seller" : "buyer";
+  const has = held.includes(role);
+  const props: PanelProps = { deal, busy, act, held };
+  const others = (["buyer", "seller", "reviewer"] as Role[]).filter((r) => r !== role && held.includes(r));
   return (
     <main className="wrap page">
-      <DealHeader deal={deal} role={role === "buyer" ? "Buyer view" : "Seller view"} />
+      <DealHeader deal={deal} role={ROLE_LABEL[role]} />
       <div className="card flat" style={{ marginBottom: 20 }}>
         <Rail state={deal.state} />
       </div>
@@ -57,7 +87,17 @@ export function DealShell({ id, role }: { id: string; role: "buyer" | "seller" }
       )}
       <div className="grid-2">
         <div className="stack">
-          {role === "buyer" ? <BuyerPanel deal={deal} busy={busy} act={act} /> : <SellerPanel deal={deal} busy={busy} act={act} />}
+          {!has && (
+            <section className="callout warn" role="status">
+              <strong>You&apos;re viewing this deal read-only.</strong>
+              <p className="small" style={{ margin: "4px 0 0" }}>
+                Acting as the {role} needs the {role} link. Actions will be refused without it.
+              </p>
+            </section>
+          )}
+          {role === "buyer" && <BuyerPanel {...props} />}
+          {role === "seller" && <SellerPanel {...props} />}
+          {role === "reviewer" && <ReviewerPanel {...props} />}
           <VerdictCard deal={deal} />
           <AgreementCard deal={deal} />
         </div>
@@ -70,8 +110,11 @@ export function DealShell({ id, role }: { id: string; role: "buyer" | "seller" }
             <Timeline events={deal.events} />
           </section>
           <HoldCard deal={deal} />
+          <SharePanel dealId={id} />
           <div className="row small">
-            <Link href={`/deals/${id}/${other}`}>Switch to {other} view →</Link>
+            {others.map((r) => (
+              <Link key={r} href={`/deals/${id}/${r}`}>Switch to {r} view →</Link>
+            ))}
             <Link href={`/deals/${id}/receipt`}>Receipt</Link>
           </div>
         </aside>

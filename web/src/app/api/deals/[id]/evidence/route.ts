@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readJson } from "@/lib/http";
 import { payoutSeller } from "@/lib/payout";
 import { dealRoute } from "@/lib/dealRoute";
 import { logEvent, transition } from "@/lib/stateMachine";
@@ -13,14 +14,14 @@ import { ensureCapturable, HoldExpiredError, sweepExpiry } from "@/lib/expiry";
  * agent's release policy captures the payment; everything else is routed to a
  * human via DISPUTED (the AI recommends, people decide).
  */
-export const POST = dealRoute(async (deal, req) => {
+export const POST = dealRoute(["seller"], async (deal, req) => {
     if (deal.state !== "FUNDS_AUTHORIZED") {
       return NextResponse.json({ error: `Deal is ${deal.state}, expected FUNDS_AUTHORIZED` }, { status: 409 });
     }
     if (sweepExpiry(deal)) {
       return NextResponse.json({ deal, error: new HoldExpiredError().message }, { status: 409 });
     }
-    const body = await req.json().catch(() => null);
+    const body = await readJson(req);
     const text = String(body?.text ?? "").trim();
     if (!text) return NextResponse.json({ error: "evidence text is required" }, { status: 400 });
     const submitter = body?.actor === "seller_agent" ? "seller_agent" : "human_seller";
@@ -67,4 +68,4 @@ export const POST = dealRoute(async (deal, req) => {
       return NextResponse.json({ deal, error: (err as Error).message }, { status: 502 });
     }
     return NextResponse.json({ deal });
-});
+}, "llm");

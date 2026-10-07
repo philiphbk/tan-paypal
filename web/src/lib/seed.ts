@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Actor, Agreement, Deal, DealEvent, DealState, VerificationResult } from "./types";
-import { deleteAllDeals, saveDeal } from "./store";
+import { deleteDeals, issueAccess, sampleDealIds, saveDeal } from "./store";
+import type { Role } from "./access";
 
 /**
  * Demo data. Every PayPal reference starts with "SEED-" so sample rows can never
@@ -167,8 +168,18 @@ function build(s: Spec): Deal {
   return deal;
 }
 
-export function seedDemoData(): number {
-  deleteAllDeals();
-  SPECS.forEach((s) => saveDeal(build(s)));
-  return SPECS.length;
+/**
+ * Replace the public sample deals. Samples are readable by anyone (never listed
+ * as private data) but still need their links to act on, so the caller gets the
+ * tokens back. Deals people created themselves are left alone.
+ */
+export function seedDemoData(): Record<string, Record<Role, string>> {
+  deleteDeals(sampleDealIds());
+  const keys: Record<string, Record<Role, string>> = {};
+  for (const s of SPECS) {
+    const deal = build(s);
+    saveDeal(deal);
+    keys[deal.id] = issueAccess(deal.id, { sample: true });
+  }
+  return keys;
 }

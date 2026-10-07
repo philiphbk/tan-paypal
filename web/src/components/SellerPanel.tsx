@@ -128,7 +128,7 @@ export function SellerPanel({ deal, busy, act }: PanelProps) {
   }
 }
 
-function Payout({ deal, busy, act }: PanelProps) {
+function Payout({ deal, busy, act }: Omit<PanelProps, "held">) {
   const p = deal.payout;
   const failed = deal.events.some((e) => e.type === "PAYOUT_FAILED") && (!p || ["DENIED", "FAILED", "CANCELED"].includes(p.batchStatus));
   if (!deal.sellerEmail) return <p className="small" style={{ margin: "6px 0 0" }}>No payout email on this deal, so no automatic payout was sent.</p>;

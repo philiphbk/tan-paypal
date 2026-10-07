@@ -17,6 +17,7 @@ export function Nav() {
         </Link>
         <div className="nav-links">
           {link("/", "Deals", (p) => p === "/" || p.startsWith("/deals"))}
+          {link("/review", "Review", (p) => p.startsWith("/review"))}
           {link("/ledger", "Ledger", (p) => p.startsWith("/ledger"))}
         </div>
       </div>

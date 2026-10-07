@@ -1,14 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { api } from "@/lib/client";
 import { honorLapsed } from "@/lib/clientTime";
 import { money } from "@/lib/format";
 import type { PanelProps } from "./DealShell";
 
-export function BuyerPanel({ deal, busy, act }: PanelProps) {
-  const [note, setNote] = useState("");
+export function BuyerPanel({ deal, busy, act, held }: PanelProps) {
   const fund = () =>
     act(async () => {
       const r = await api<{ approveUrl?: string }>(`/api/deals/${deal.id}/pay`, {});
@@ -68,25 +66,12 @@ export function BuyerPanel({ deal, busy, act }: PanelProps) {
       );
     case "DISPUTED":
       return (
-        <section className="card" style={{ borderColor: "var(--warn)" }}>
-          <h3>Your call: release or refund</h3>
-          <p className="muted">
-            The AI was not confident enough to move money on its own, so the decision is yours. Read the verdict and the evidence below, then choose.
+        <section className="callout warn">
+          <strong>Sent to a human reviewer.</strong>
+          <p style={{ margin: "4px 0 10px" }}>
+            The AI was not confident enough to release the payment, so a person decides. Your funds stay held, not captured, until they do.
           </p>
-          {deal.evidence && (
-            <details style={{ marginBottom: 12 }}>
-              <summary>Evidence submitted by the seller</summary>
-              <pre className="callout" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", marginTop: 8 }}>{deal.evidence.text}</pre>
-            </details>
-          )}
-          <label className="field">
-            <span>Note (kept on the receipt)</span>
-            <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Why you decided this" />
-          </label>
-          <div className="row" style={{ marginTop: 12 }}>
-            <button className="btn primary" disabled={busy} onClick={() => act(() => api(`/api/deals/${deal.id}/resolve`, { decision: "release", note }))}>Release payment to seller</button>
-            <button className="btn danger" disabled={busy} onClick={() => act(() => api(`/api/deals/${deal.id}/resolve`, { decision: "refund", note }))}>Refund me</button>
-          </div>
+          {held.includes("reviewer") && <Link className="btn sm" href={`/deals/${deal.id}/reviewer`}>Open the reviewer view</Link>}
         </section>
       );
     case "EXPIRED":

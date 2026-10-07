@@ -4,7 +4,7 @@ import { logEvent } from "@/lib/stateMachine";
 import { createAuthorizeOrder } from "@/lib/paypal";
 
 /** Step 1 of the hold: create the AUTHORIZE order and return the buyer approval URL. */
-export const POST = dealRoute(async (deal, _req) => {
+export const POST = dealRoute(["buyer"], async (deal, _req) => {
     if (deal.state !== "AGREED") {
       return NextResponse.json({ error: `Deal is ${deal.state}, expected AGREED` }, { status: 409 });
     }
