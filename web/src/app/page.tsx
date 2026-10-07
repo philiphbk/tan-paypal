@@ -21,7 +21,9 @@ async function api<T>(url: string, body?: unknown): Promise<T> {
 export default function Home() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({ title: "", amount: "25.00", criteria: "" });
+  const [form, setForm] = useState({ title: "", amount: "25.00", criteria: "", description: "", deliverables: "", deadline: "", currency: "USD" });
+  const [freeText, setFreeText] = useState("");
+  const [draftInfo, setDraftInfo] = useState<{ source: string; warnings: string[] } | null>(null);
   const [evidence, setEvidence] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
@@ -64,19 +66,58 @@ export default function Home() {
 
       <section style={card}>
         <h2>New deal</h2>
-        <input style={input} placeholder="What is being delivered?" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-        <input style={input} placeholder="Amount (USD)" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+        <textarea style={{ ...input, minHeight: 70 }} placeholder="Describe the deal in plain English, e.g. “I'll design a logo for £150, delivered as SVG and PNG within 7 days.”" value={freeText} onChange={(e) => setFreeText(e.target.value)} />
+        <button
+          style={{ ...btn, marginBottom: 12 }}
+          onClick={() =>
+            run(async () => {
+              const r = await api<{ agreement: Record<string, unknown> & { deliverables: string[]; acceptanceCriteria: string[] }; source: string; warnings: string[] }>("/api/agreements/draft", { description: freeText });
+              const a = r.agreement;
+              setForm({
+                title: String(a.title ?? ""),
+                description: String(a.description ?? ""),
+                amount: String(a.amount ?? ""),
+                currency: String(a.currency ?? "USD"),
+                deadline: String(a.deadline ?? ""),
+                deliverables: a.deliverables.join("\n"),
+                criteria: a.acceptanceCriteria.join("\n"),
+              });
+              setDraftInfo({ source: r.source, warnings: r.warnings });
+            })
+          }
+        >
+          Draft agreement with AI
+        </button>
+        {draftInfo && (
+          <p style={{ fontSize: 13, color: "#555" }}>
+            Drafted by {draftInfo.source === "ai" ? "AI" : "the offline drafter"}. Review and edit before locking.
+            {draftInfo.warnings.map((w) => <span key={w} style={{ display: "block", color: "#b45309" }}>{w}</span>)}
+          </p>
+        )}
+        <input style={input} placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+        <div style={{ display: "flex", gap: 8 }}>
+          <input style={input} placeholder="Amount" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+          <input style={{ ...input, maxWidth: 90 }} placeholder="USD" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} />
+          <input style={input} type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} />
+        </div>
+        <textarea style={{ ...input, minHeight: 50 }} placeholder="Deliverables, one per line" value={form.deliverables} onChange={(e) => setForm({ ...form, deliverables: e.target.value })} />
         <textarea style={{ ...input, minHeight: 70 }} placeholder="Acceptance criteria, one per line" value={form.criteria} onChange={(e) => setForm({ ...form, criteria: e.target.value })} />
         <button
           style={btn}
           onClick={() =>
-            run(() =>
-              api("/api/deals", {
+            run(async () => {
+              const lines = (v: string) => v.split("\n").map((s) => s.trim()).filter(Boolean);
+              await api("/api/deals", {
                 title: form.title,
+                description: form.description,
                 amount: form.amount,
-                acceptanceCriteria: form.criteria.split("\n").map((s) => s.trim()).filter(Boolean),
-              }),
-            )
+                currency: form.currency,
+                deadline: form.deadline || undefined,
+                deliverables: lines(form.deliverables),
+                acceptanceCriteria: lines(form.criteria),
+              });
+              setDraftInfo(null);
+            })
           }
         >
           Lock agreement
