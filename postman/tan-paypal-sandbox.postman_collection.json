@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "TAN for PayPal (sandbox)",
-    "description": "Walks the AI-assured checkout flow through the app's API, and the underlying PayPal sandbox calls directly. Set paypalClientId / paypalClientSecret as collection variables (sandbox credentials only). Do not commit or share them.",
+    "description": "Walks the AI-assured checkout flow through the app's API, and the underlying PayPal sandbox calls directly. Set paypalClientId / paypalClientSecret as collection variables (sandbox credentials only). Do not commit or share them. Deal endpoints are protected by per-deal access links: request 2 saves the buyer/seller/reviewer tokens and a collection pre-request script sends them in the x-deal-keys header. Run against an app started with PAYPAL_MODE=simulated to try the flow without credentials.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -89,8 +89,12 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.set('dealId', pm.response.json().deal.id);",
-                  "pm.test('created as DRAFT', () => pm.expect(pm.response.json().deal.state).to.eql('DRAFT'));"
+                  "const r = pm.response.json();",
+                  "pm.collectionVariables.set('dealId', r.deal.id);",
+                  "pm.collectionVariables.set('buyerKey', r.keys.buyer);",
+                  "pm.collectionVariables.set('sellerKey', r.keys.seller);",
+                  "pm.collectionVariables.set('reviewerKey', r.keys.reviewer);",
+                  "pm.test('created as DRAFT', () => pm.expect(r.deal.state).to.eql('DRAFT'));"
                 ]
               }
             }
@@ -254,7 +258,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"actor\": \"seller_agent\",\n  \"text\": \"Delivered: logo.svg and logo.png (3000px) plus usage-guide.pdf (1 page). Files: https://demo.example/delivery.zip\"\n}",
+              "raw": "{\n  \"actor\": \"seller_agent\",\n  \"text\": \"Delivered: logo.svg and logo.png (3000px) plus usage-guide.pdf (1 page). Files: https://demo.example/delivery.zip\",\n  \"links\": [\n    \"https://example.com/proof\"\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -268,7 +272,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "console.log(pm.response.json().deal.state, pm.response.json().deal.verification);"
+                  "const d = pm.response.json().deal;",
+                  "console.log(d.state, d.verification);",
+                  "const a = (d.evidence && d.evidence.attachments || [])[0];",
+                  "if (a) pm.collectionVariables.set('attachmentId', a.id);"
                 ]
               }
             }
@@ -319,7 +326,7 @@
           ]
         },
         {
-          "name": "7. Human review: release",
+          "name": "7. Human review: release (needs the reviewer token)",
           "request": {
             "method": "POST",
             "header": [
@@ -579,6 +586,26 @@
                   "language": "json"
                 }
               }
+            }
+          }
+        },
+        {
+          "name": "Fetch an evidence image (any role)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/deals/{{dealId}}/attachments/{{attachmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "deals",
+                "{{dealId}}",
+                "attachments",
+                "{{attachmentId}}"
+              ]
             }
           }
         }
@@ -1069,6 +1096,42 @@
     {
       "key": "draft",
       "value": ""
+    },
+    {
+      "key": "buyerKey",
+      "value": ""
+    },
+    {
+      "key": "sellerKey",
+      "value": ""
+    },
+    {
+      "key": "reviewerKey",
+      "value": ""
+    },
+    {
+      "key": "reviewerGlobalKey",
+      "value": ""
+    },
+    {
+      "key": "attachmentId",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Send whichever deal access tokens we hold, as <dealId>.<token>,... (see src/lib/access.ts).",
+          "const id = pm.collectionVariables.get('dealId');",
+          "const toks = ['buyerKey','sellerKey','reviewerKey'].map(k => pm.collectionVariables.get(k)).filter(Boolean);",
+          "if (id && toks.length) pm.request.headers.upsert({ key: 'x-deal-keys', value: toks.map(t => id + '.' + t).join(',') });",
+          "const g = pm.collectionVariables.get('reviewerGlobalKey');",
+          "if (g) pm.request.headers.upsert({ key: 'x-reviewer-key', value: g });"
+        ]
+      }
     }
   ]
 }

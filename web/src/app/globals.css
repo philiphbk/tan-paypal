@@ -10,7 +10,7 @@
   --accent-soft: #e6edfd;
   --ok: #0f7a57;
   --ok-soft: #dff3ea;
-  --warn: #a85a07;
+  --warn: #9c5306;
   --warn-soft: #fbeed9;
   --bad: #b3261e;
   --bad-soft: #fbe5e3;
@@ -216,3 +216,41 @@ dl.facts dd { margin: 0; word-break: break-word; }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 50; max-width: min(92vw, 560px); }
 .skeleton { background: linear-gradient(90deg, var(--surface-2), var(--line), var(--surface-2)); background-size: 200% 100%; animation: sk 1.2s infinite; border-radius: 10px; height: 18px; }
 @keyframes sk { to { background-position: -200% 0; } }
+
+/* spacing fixes found in the visual pass */
+.card h2 + p { margin-top: 8px; }
+.card h3 + dl.facts, .card h3 + p, .card .spread + p, .card .spread + ul, .card .spread + .eyebrow { margin-top: 10px; }
+.card .spread + p.muted { margin-top: 6px; }
+
+/* file picker */
+.input[type="file"] { padding: 7px 10px; }
+.input[type="file"]::file-selector-button { font: inherit; font-weight: 600; margin-right: 10px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); cursor: pointer; }
+
+/* hero with an example card on wide screens */
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 40px; align-items: center; }
+@media (max-width: 960px) { .hero-grid { grid-template-columns: 1fr; } .hero-example { display: none; } }
+.hero-example { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; box-shadow: var(--shadow); transform: rotate(1.2deg); }
+.hero-example .row-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.hero-example .row-item:last-child { border-bottom: 0; }
+
+/* ledger cells: keep badges centred in the row */
+.ag-cell .badge { padding: 2px 9px; line-height: 1.4; }
+.ag-cell .ag-cell-wrapper, .ag-cell { display: flex; align-items: center; }
+
+/* narrow screens (found in the 390px visual pass) */
+@media (max-width: 640px) {
+  .wrap { padding: 0 16px; }
+  .nav .wrap { gap: 8px; }
+  .brand { white-space: nowrap; }
+  .brand > span:last-child { display: none; }
+  .nav-links { gap: 0; }
+  .nav-links a { padding: 8px 9px; }
+  .nav .badge { font-size: 0.68rem; padding: 2px 8px; }
+  .deal-head > div:last-child { text-align: left !important; }
+  .amount { font-size: 1.8rem; }
+  .receipt { padding: 22px 18px; }
+  .hero { padding: 32px 0 24px; }
+}
+@media (max-width: 400px) { .nav .badge { display: none; } }
+
+.receipt h3 + dl.facts, .receipt h3 + .timeline { margin-top: 10px; }

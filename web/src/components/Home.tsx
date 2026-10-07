@@ -48,14 +48,30 @@ export function Home() {
   return (
     <main className="wrap page">
       <section className="hero">
-        <p className="eyebrow">AI-assured checkout · PayPal sandbox</p>
-        <h1 style={{ marginTop: 10 }}>
-          Pay when the work is <em>proven</em>, not promised.
-        </h1>
-        <p className="lede">
-          Funds are held on PayPal, never captured up front. An AI verifier checks the seller&apos;s proof against the agreement, and
-          payment is released only when every condition is met. Anything uncertain goes to a human.
-        </p>
+        <div className="hero-grid">
+          <div>
+            <p className="eyebrow">AI-assured checkout · PayPal sandbox</p>
+            <h1 style={{ marginTop: 10 }}>
+              Pay when the work is <em>proven</em>, not promised.
+            </h1>
+            <p className="lede">
+              Funds are held on PayPal, never captured up front. An AI verifier checks the seller&apos;s proof against the agreement, and
+              payment is released only when every condition is met. Anything uncertain goes to a human.
+            </p>
+          </div>
+          <aside className="hero-example" aria-label="Example outcome">
+            <div className="spread">
+              <span className="eyebrow">Example deal</span>
+              <span className="badge ok">Released</span>
+            </div>
+            <h3 style={{ margin: "10px 0 2px" }}>Logo design, £150</h3>
+            <p className="small muted" style={{ marginBottom: 8 }}>Held by PayPal until the proof checked out.</p>
+            <div className="row-item"><span className="tick yes">✓</span><span>Logo delivered as SVG and PNG files</span></div>
+            <div className="row-item"><span className="tick yes">✓</span><span>One-page usage guide included</span></div>
+            <div className="row-item"><span className="badge agent">Verifier agent</span><span className="small">pass · 94% confident</span></div>
+            <div className="row-item"><span className="badge blue">Buyer agent</span><span className="small">release approved by policy</span></div>
+          </aside>
+        </div>
         <div className="steps">
           <div className="step"><b>Agree</b><span>Plain English becomes checkable conditions.</span></div>
           <div className="step"><b>Hold</b><span>PayPal authorizes the funds. Nothing is captured.</span></div>

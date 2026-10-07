@@ -100,7 +100,7 @@ export function Receipt({ id }: { id: string }) {
             <li key={i} className="tl-item" style={{ animation: "none" }}>
               <div className="tl-title">{eventTitle(e)}</div>
               <div className="tl-meta">{ACTOR_LABEL[e.actor ?? "system"]} · {dateTime(e.at)}</div>
-              {e.detail && <div className="tl-detail">{e.detail}</div>}
+              {e.detail && e.detail !== eventTitle(e) && <div className="tl-detail">{e.detail}</div>}
             </li>
           ))}
         </ol>

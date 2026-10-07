@@ -18,7 +18,7 @@ Built for the PayPal AI Hackathon. Everything runs on the **PayPal sandbox**. No
 | 3. Hold | PayPal Orders v2 with `intent=AUTHORIZE`. Funds are reserved, not captured. | Buyer + PayPal |
 | 4. Prove | Seller submits evidence of delivery. | Seller or seller agent |
 | 5. Verify | Each release condition is judged against the evidence. | Verifier agent |
-| 6. Release | A single policy gate decides if money may move. Pass: capture, then pay the seller out via the Payouts API. Otherwise: `DISPUTED`. | Buyer agent, else a human |
+| 6. Release | A single policy gate decides if money may move. Pass: capture, then pay the seller out via the Payouts API. Otherwise: `DISPUTED`. | Buyer agent, else a human reviewer |
 | 7. Receipt | Outcome receipt with every decision, actor and PayPal reference. | |
 
 Every action on the live timeline is attributed to the actor that took it: buyer agent, seller agent, verifier agent, a human, or PayPal.
@@ -41,12 +41,37 @@ The seller is paid if the verifier says yes, so the evidence is an attack surfac
 
 The seller view has a *Prompt-injection attempt* sample under demo helpers so you can watch this happen.
 
+### Who can do what: access links
+
+There are no passwords. Creating a deal issues three secret links, one per role: **buyer**, **seller** and **reviewer**. Only their hashes are stored, in a table separate from the deal, so a deal's JSON can never leak them.
+
+| Action | Needs |
+| --- | --- |
+| Accept the proposal, submit evidence | seller link |
+| Hold funds, reauthorize, re-fund an expired hold | buyer link |
+| **Release or refund a disputed deal** | **reviewer link** (or the instance's `REVIEWER_KEY`) |
+| Read a deal, its receipt or its evidence images | any of the three |
+
+Lists, the ledger and the receipt only show deals you hold a link for. The sample deals are public read-only. Share a link from a deal's *Invite someone* panel. In this demo the creator's browser holds all three, so one person can walk through every role; in real use you would send each link to its own party.
+
+### Reviewer queue
+
+`/review` lists every deal waiting on a person: the verifier wasn't confident, the evidence tried to instruct it, or the release policy withheld payment. Open one to read the evidence (text, images, links) and the verdict, then release or refund with a note that goes on the receipt.
+
+### Rate limits and cost caps
+
+Per-IP limits (AI endpoints 10/min, writes 40/min, deal creation 20/hour, uploads 10/min), JSON body caps, and a hard daily ceiling on model calls (`LLM_DAILY_CAP`, default 300) after which the offline rules take over. Limits are in-memory, which is right for one instance; a multi-instance deployment would move them to Redis.
+
+### Evidence beyond text
+
+Sellers can attach up to 3 images and cite links. Images are identified by their magic bytes (not their claimed type), resized in the browser, stored apart from the deal, served only to link holders with a locked-down content policy, and shown to the vision model as untrusted. Links are recorded for the reviewer and are **not opened** by default. Setting `EVIDENCE_FETCH_LINKS=1` lets the verifier read them, behind SSRF guards re-checked on every redirect hop (see the notes in `web/src/lib/linkFetch.ts` before enabling it on a host that can reach private networks).
+
 ## PayPal APIs used
 
 - **Orders v2**: create (`AUTHORIZE`), authorize
 - **Payments v2**: capture, void, **reauthorize**, authorization details
 - **Payouts v1**: pay the seller out after capture (freelance scenario)
-- **Webhooks**: signature verification, idempotent handling, payout status updates
+- **Webhooks**: signature verification, idempotent handling, and they change deal state: a hold voided outside the app expires the deal, a reversed capture or a bounced payout is flagged on the timeline, and payout status updates land on the receipt
 - Every PayPal write carries a `PayPal-Request-Id` idempotency key (per deal, per funding attempt, per authorization).
 
 ### Authorization expiry
@@ -55,7 +80,8 @@ From the [PayPal docs](https://developer.paypal.com/docs/checkout/standard/custo
 
 - Before every capture the app reauthorizes if the honor period has lapsed.
 - If the 29 days pass, the deal moves to `EXPIRED`. The agreement stands and the buyer can approve a new hold (new idempotency key).
-- With `DEMO_MODE=1`, `POST /api/deals/:id/simulate-time` ages the *local* clocks to show these paths. PayPal's own clocks are unaffected, so a real reauthorize call inside PayPal's honor period will still be refused by PayPal.
+- A background sweep (every 10 minutes, plus `/api/cron/sweep` behind `CRON_SECRET` for an external scheduler) expires holds nobody opens.
+- With `DEMO_MODE=1`, `POST /api/deals/:id/simulate-time` ages the *local* clocks to show these paths. With the real sandbox, PayPal's own clocks are unaffected, so a real reauthorize call inside PayPal's honor period is still refused by PayPal. With the simulator the simulator's clock moves too.
 
 ## Run it
 
@@ -69,7 +95,9 @@ cp .env.example .env.local
 npm run dev            # http://localhost:3000
 ```
 
-**With no credentials at all** the app starts, the AI features use deterministic offline rules, and *Load sample deals* on the home page fills the ledger so you can explore every screen. To run the real flow you need sandbox credentials:
+**With no credentials at all** the app starts, the AI features use deterministic offline rules, and *Load sample deals* on the home page fills the ledger so you can explore every screen.
+
+**To run the whole flow without PayPal credentials**, set `PAYPAL_MODE=simulated` in `.env.local`. The app then talks to a local stand-in for PayPal (`web/src/lib/fakePaypal.ts`) that enforces the rules this app depends on: approval before authorization, the 3-day honor period, 29-day validity, reauthorization timing, and `PayPal-Request-Id` idempotency. It is clearly labelled in the UI (a "Simulator" badge and a banner on the approval page) and exists for evaluation and for the end-to-end tests. **It is not PayPal.** The real submission path is the sandbox:
 
 1. Create a free account at https://developer.paypal.com/ and open **Apps & Credentials** (Sandbox).
 2. Create a REST app. Enable **Payouts** on it. Copy the client ID and secret into `web/.env.local`.
@@ -89,6 +117,11 @@ npm run dev            # http://localhost:3000
 | `BUYER_AGENT_MAX_AMOUNT` | Largest amount the buyer agent may release without a human |
 | `DEMO_MODE` | `1` shows sample-data, reset and time-shift tools |
 | `DATABASE_PATH` | SQLite file, default `web/data/tan.db` |
+| `PAYPAL_MODE` | `simulated` runs against the local PayPal stand-in; blank uses the real sandbox |
+| `REVIEWER_KEY` | Optional: grants the reviewer role on every deal |
+| `LLM_DAILY_CAP` | Hard daily ceiling on AI calls (default 300) |
+| `EVIDENCE_FETCH_LINKS` | `1` lets the verifier open links in evidence (SSRF risk; off by default) |
+| `CRON_SECRET` | Enables `/api/cron/sweep` for an external scheduler |
 
 Secrets live in `.env.local`, which is git-ignored. Never commit them.
 
@@ -98,7 +131,11 @@ Secrets live in `.env.local`, which is git-ignored. Never commit them.
 cd web && npm test
 ```
 
-33 unit tests cover the state machine, the release policy (every way a verdict can fail to release money), the injection defences, the agreement validator and the authorization expiry windows. They run offline and need no credentials.
+71 tests, all offline and credential-free:
+
+- **Unit:** the state machine, the release policy (every way a verdict can fail to release money), the injection defences, the agreement validator, the expiry windows, webhook handling, the sweeper, evidence file validation and the SSRF guards.
+- **Route-level:** access control against the real handlers (a buyer link cannot resolve a dispute, a token for one deal is useless on another) and rate limits.
+- **End to end:** nine scenarios driving the real routes, store and PayPal client against the simulator: happy path with payout, injection never auto-releases, reviewer refund voids the hold, reauthorization after the honor period, expiry and re-funding, webhooks, image evidence, and rate limiting. Breaking the reviewer-only rule or the pre-capture reauthorization makes them fail.
 
 ### A 3-minute walkthrough
 
@@ -129,8 +166,15 @@ web/src
   lib/payout.ts            seller payout after capture
   lib/paypal.ts            PayPal REST client (fetch, idempotency keys)
   lib/store.ts             SQLite store with per-deal locking
+  lib/access.ts            capability links (buyer, seller, reviewer)
+  lib/rateLimit.ts         per-IP limits; llm.ts holds the daily AI budget
+  lib/webhookHandler.ts    applies PayPal webhooks to deal state
+  lib/sweeper.ts           scheduled expiry sweep
+  lib/fakePaypal.ts        the opt-in PayPal simulator
+  lib/evidenceFiles.ts     image/link validation; linkFetch.ts is the SSRF-guarded fetcher
   app/api/**               routes
-  app/deals/[id]/**        buyer, seller and receipt pages
+  app/deals/[id]/**        buyer, seller, reviewer and receipt pages
+  app/review               reviewer queue
   app/ledger               AG Grid ledger
 ```
 
@@ -148,14 +192,19 @@ The repository's history is the record. The first commit is dated 2026-10-07 and
 6. SQLite persistence with per-deal locking.
 7. UI pass: buyer and seller views, live timeline, receipt, AG Grid ledger.
 8. Submission readiness: demo seed and reset, Render Blueprint, Postman collection, this README.
+9. Hardening and extras: per-deal access links and a reviewer role, rate limits and an AI cost cap, webhook-driven state and a scheduled expiry sweep, a PayPal simulator with end-to-end tests, image and link evidence, a reviewer queue, and a mobile and contrast pass checked with real screenshots and computed WCAG ratios.
 
 The project was developed with Claude Code (Anthropic) as a coding assistant, and the product itself uses an LLM for agreement drafting and evidence verification.
 
 ## Limitations
 
-- Sandbox only. There is no authentication: the buyer and seller views are separate screens, not separate accounts. A production version would bind each action to an authenticated party.
-- The offline verifier is keyword matching, a demo fallback and not a substitute for the AI verifier.
+- Sandbox only. Access is by secret link, not by account: whoever holds a link holds that role. There is no sign-in, no password reset and no way to revoke a link. A production version would bind each action to an authenticated party and email the links.
+- The creator's browser holds all three links so one person can demo every role.
+- Rate limits and the AI budget are in-memory and per instance.
+- The offline verifier is keyword matching, a demo fallback and not a substitute for the AI verifier. It does not look at images.
+- The PayPal simulator is an approximation written from PayPal's documentation. Where it is stricter than PayPal (it refuses a capture after the honor period), that is deliberate so the reauthorization path is exercised. Confirm behaviour on the real sandbox.
 - Payout requires Payouts to be enabled on the sandbox app.
+- The DNS-rebinding window in link fetching is documented in `linkFetch.ts`; keep `EVIDENCE_FETCH_LINKS` off unless that is acceptable.
 
 ## License
 

@@ -23,7 +23,7 @@ export function SharePanel({ dealId }: { dealId: string }) {
     <section className="card flat">
       <h3>Invite someone</h3>
       <p className="small muted">
-        Each link grants one role on this deal and nothing else. Whoever holds the seller link can act as the seller. Share it only with them.
+        Each link grants one role on this deal and nothing else. Share a link only with the person who should act in that role.
       </p>
       <div className="row">
         {roles.map((r) => (

@@ -21,7 +21,7 @@ export function Nav() {
           <span>TAN for PayPal</span>
         </Link>
         {simulated && (
-          <span className="badge warn" title="PAYPAL_MODE=simulated: a local stand-in for PayPal, not the real sandbox">PayPal simulator</span>
+          <span className="badge warn" title="PAYPAL_MODE=simulated: a local stand-in for PayPal, not the real sandbox">Simulator</span>
         )}
         <div className="nav-links">
           {link("/", "Deals", (p) => p === "/" || p.startsWith("/deals"))}

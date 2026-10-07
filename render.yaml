@@ -29,6 +29,16 @@ services:
         value: claude-sonnet-5-5
       - key: BUYER_AGENT_MAX_AMOUNT
         value: 500
+      # Optional: one key that grants the reviewer role on every deal (for an ops team).
+      - key: REVIEWER_KEY
+        sync: false
+      # Hard daily ceiling on AI calls, so a public demo cannot run up a bill.
+      - key: LLM_DAILY_CAP
+        value: 300
+      # Optional: lets an external scheduler call /api/cron/sweep. The app also sweeps for
+      # expired holds itself every 10 minutes, so this is only needed for belt and braces.
+      - key: CRON_SECRET
+        generateValue: true
       # Shows the seed/reset tools on the home page. Remove for anything but a demo.
       - key: DEMO_MODE
         value: 1

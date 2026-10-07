@@ -36,8 +36,8 @@ const badge = (label: string, tone: string) => <span className={`badge ${tone}`}
 const date = (p: { value?: string }) => (p.value ? new Date(p.value).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "");
 
 const txCols: ColDef<Tx>[] = [
-  { field: "title", headerName: "Deal", flex: 2, minWidth: 200 },
-  { field: "state", headerName: "Status", minWidth: 150, cellRenderer: (p: ICellRendererParams<Tx>) => p.data ? badge(STATE_META[p.data.state].label, STATE_META[p.data.state].tone) : null, filter: "agSetColumnFilter" },
+  { field: "title", headerName: "Deal", flex: 2, minWidth: 240 },
+  { field: "state", headerName: "Status", minWidth: 150, cellRenderer: (p: ICellRendererParams<Tx>) => p.data ? badge(STATE_META[p.data.state].label, STATE_META[p.data.state].tone) : null, },
   { field: "amount", headerName: "Amount", type: "rightAligned", filter: "agNumberColumnFilter", valueFormatter: (p) => p.data ? money(p.data.amount, p.data.currency) : "" },
   { field: "verdict", headerName: "Verifier", valueFormatter: (p) => (p.value ? String(p.value).replace("_", " ") : "") },
   { field: "confidence", headerName: "Confidence", type: "rightAligned", filter: "agNumberColumnFilter", valueFormatter: (p) => (p.value == null ? "" : `${Math.round(p.value * 100)}%`) },
@@ -62,7 +62,7 @@ const evCols: ColDef<Ev>[] = [
 const auCols: ColDef<Au>[] = [
   { field: "at", headerName: "When", valueFormatter: date, sort: "desc", minWidth: 170 },
   { field: "title", headerName: "Deal", flex: 1, minWidth: 160 },
-  { field: "actor", headerName: "Actor", minWidth: 150, valueFormatter: (p) => ACTOR_LABEL[p.value as Actor] ?? p.value, filter: "agSetColumnFilter" },
+  { field: "actor", headerName: "Actor", minWidth: 150, valueFormatter: (p) => ACTOR_LABEL[p.value as Actor] ?? p.value, },
   { field: "type", headerName: "Event", flex: 1, minWidth: 200, valueFormatter: (p) => eventTitle({ at: "", type: p.value }) },
   { field: "detail", headerName: "Detail", flex: 2, minWidth: 260 },
 ];
