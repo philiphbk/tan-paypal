@@ -25,7 +25,10 @@ Scaffold: state machine, store, PayPal client, API routes and a minimal UI. See 
 
 Requires Node 18.18+.
 
+All application code lives in the `web/` folder.
+
 ```bash
+cd web
 npm install
 cp .env.example .env.local   # fill in sandbox credentials
 npm run dev
