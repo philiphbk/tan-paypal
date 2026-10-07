@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { findDealByOrderId, findDealByPayoutBatchId, markWebhookSeen } from "@/lib/store";
+import { findDealByOrderId, findDealByPayoutBatchId, markWebhookSeen, withDeal } from "@/lib/store";
 import { logEvent } from "@/lib/stateMachine";
 import { verifyWebhook } from "@/lib/paypal";
 
@@ -33,15 +33,19 @@ export async function POST(req: Request) {
 
   const orderId = event.resource?.supplementary_data?.related_ids?.order_id;
   const payoutBatchId = event.resource?.batch_header?.payout_batch_id;
-  const deal = orderId
+  const found = orderId
     ? findDealByOrderId(orderId)
     : payoutBatchId
       ? findDealByPayoutBatchId(payoutBatchId)
       : undefined;
-  if (deal?.payout && event.resource?.batch_header?.batch_status) {
-    deal.payout.batchStatus = event.resource.batch_header.batch_status;
+  if (found) {
+    await withDeal(found.id, async (deal) => {
+      if (deal.payout && event.resource?.batch_header?.batch_status) {
+        deal.payout.batchStatus = event.resource.batch_header.batch_status;
+      }
+      logEvent(deal, `WEBHOOK_${event.event_type}`, event.resource?.id, "paypal");
+    });
   }
-  if (deal) logEvent(deal, `WEBHOOK_${event.event_type}`, event.resource?.id, "paypal");
 
   return NextResponse.json({ ok: true });
 }

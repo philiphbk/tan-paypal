@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDeal } from "@/lib/store";
+import { dealRoute } from "@/lib/dealRoute";
 import { logEvent } from "@/lib/stateMachine";
 import { sweepExpiry } from "@/lib/expiry";
 
@@ -9,12 +9,10 @@ import { sweepExpiry } from "@/lib/expiry";
  * PayPal's own clocks are unaffected, so a real reauthorize call inside PayPal's
  * honor period will still be rejected by PayPal; the EXPIRED path is fully local.
  */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export const POST = dealRoute(async (deal, req) => {
   if (process.env.DEMO_MODE !== "1") {
     return NextResponse.json({ error: "Disabled. Set DEMO_MODE=1 to enable." }, { status: 403 });
   }
-  const deal = getDeal(params.id);
-  if (!deal) return NextResponse.json({ error: "not found" }, { status: 404 });
   const body = await req.json().catch(() => null);
   const days = Number(body?.days);
   if (!Number.isFinite(days) || days <= 0 || days > 60) {
@@ -29,4 +27,4 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   logEvent(deal, "DEMO_TIME_SHIFT", `Local authorization clocks moved back ${days} day(s)`, "system");
   sweepExpiry(deal);
   return NextResponse.json({ deal });
-}
+});

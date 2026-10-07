@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createDeal, listDeals } from "@/lib/store";
+import { createDeal, listDeals, saveDeal, withDeal } from "@/lib/store";
 import { isEmail } from "@/lib/payout";
 import { sweepExpiry } from "@/lib/expiry";
 import { AgreementValidationError, validateAgreementDraft } from "@/lib/agreementBuilder";
@@ -7,9 +7,13 @@ import { AgreementValidationError, validateAgreementDraft } from "@/lib/agreemen
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const deals = listDeals();
-  deals.forEach((d) => sweepExpiry(d));
-  return NextResponse.json({ deals });
+  // Expire lapsed holds under each deal's lock, then return the fresh list.
+  const now = new Date();
+  for (const d of listDeals()) {
+    const copy = structuredClone(d);
+    if (sweepExpiry(copy, now)) await withDeal(d.id, async (live) => sweepExpiry(live, now));
+  }
+  return NextResponse.json({ deals: listDeals() });
 }
 
 /**
@@ -33,6 +37,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "sellerEmail is not a valid email" }, { status: 400 });
   }
   const deal = createDeal(draft, "Buyer", "Seller", proposer);
-  if (body?.sellerEmail) deal.sellerEmail = body.sellerEmail;
+  if (body?.sellerEmail) {
+    deal.sellerEmail = body.sellerEmail;
+    saveDeal(deal);
+  }
   return NextResponse.json({ deal }, { status: 201 });
 }
