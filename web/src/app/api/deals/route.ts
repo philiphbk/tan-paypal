@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { createDeal, listDeals } from "@/lib/store";
+import { sweepExpiry } from "@/lib/expiry";
 import { AgreementValidationError, validateAgreementDraft } from "@/lib/agreementBuilder";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json({ deals: listDeals() });
+  const deals = listDeals();
+  deals.forEach((d) => sweepExpiry(d));
+  return NextResponse.json({ deals });
 }
 
 /**

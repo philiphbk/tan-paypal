@@ -61,6 +61,8 @@ interface PayPalLink {
 /** Create an order with intent AUTHORIZE so funds are reserved, not captured. */
 export async function createAuthorizeOrder(args: {
   dealId: string;
+  /** Funding attempt number; a new idempotency key is needed after an expired hold. */
+  attempt: number;
   amount: string;
   currency: string;
   description: string;
@@ -69,7 +71,7 @@ export async function createAuthorizeOrder(args: {
 }) {
   const order = await ppFetch<{ id: string; links: PayPalLink[] }>("/v2/checkout/orders", {
     method: "POST",
-    requestId: `order-${args.dealId}`,
+    requestId: `order-${args.dealId}-${args.attempt}`,
     body: {
       intent: "AUTHORIZE",
       purchase_units: [
@@ -113,16 +115,40 @@ export async function authorizeOrder(orderId: string) {
 export async function captureAuthorization(authorizationId: string, dealId: string) {
   const res = await ppFetch<{ id: string; status: string }>(
     `/v2/payments/authorizations/${authorizationId}/capture`,
-    { method: "POST", requestId: `capture-${dealId}`, body: { final_capture: true } },
+    { method: "POST", requestId: `capture-${authorizationId}`, body: { final_capture: true } },
   );
   return { captureId: res.id, status: res.status };
+}
+
+/**
+ * Reauthorize after the 3-day honor period (allowed any time within the 29-day
+ * valid period, not inside the honor period). Returns a NEW authorization id and
+ * restarts the honor period. See
+ * https://developer.paypal.com/docs/checkout/standard/customize/authorization/
+ */
+export async function reauthorizeAuthorization(args: {
+  authorizationId: string;
+  attempt: number;
+  amount: string;
+  currency: string;
+}) {
+  const res = await ppFetch<{ id: string; status: string; expiration_time?: string }>(
+    `/v2/payments/authorizations/${args.authorizationId}/reauthorize`,
+    {
+      method: "POST",
+      // Idempotent per source authorization: retries cannot double-reauthorize.
+      requestId: `reauth-${args.authorizationId}-${args.attempt}`,
+      body: { amount: { currency_code: args.currency, value: args.amount } },
+    },
+  );
+  return { authorizationId: res.id, status: res.status, expiresAt: res.expiration_time };
 }
 
 /** Void an authorization (release the hold back to the buyer). */
 export async function voidAuthorization(authorizationId: string, dealId: string) {
   await ppFetch(`/v2/payments/authorizations/${authorizationId}/void`, {
     method: "POST",
-    requestId: `void-${dealId}`,
+    requestId: `void-${authorizationId}`,
   });
 }
 

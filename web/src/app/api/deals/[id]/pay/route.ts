@@ -14,6 +14,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     const base = process.env.APP_BASE_URL ?? "http://localhost:3000";
     const { orderId, approveUrl } = await createAuthorizeOrder({
       dealId: deal.id,
+      attempt: deal.paypal.fundingAttempt ?? 1,
       amount: deal.agreement.amount,
       currency: deal.agreement.currency,
       description: deal.agreement.title,

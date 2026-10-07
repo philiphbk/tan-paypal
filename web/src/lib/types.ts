@@ -61,6 +61,14 @@ export interface Deal {
     approveUrl?: string;
     authorizationId?: string;
     captureId?: string;
+    /** 1 for the first hold; incremented each time an expired deal is re-funded. */
+    fundingAttempt?: number;
+    authorizedAt?: string;
+    /** End of the 3-day honor period: capture is only guaranteed before this. */
+    honorEndsAt?: string;
+    /** End of the 29-day valid period: after this the hold is gone. */
+    validUntil?: string;
+    reauthCount?: number;
   };
   evidence?: { text: string; submittedAt: string };
   verification?: VerificationResult;

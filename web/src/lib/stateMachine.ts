@@ -8,11 +8,12 @@ const TRANSITIONS: Record<DealState, DealState[]> = {
   DRAFT: ["AGREED"],
   AGREED: ["FUNDS_AUTHORIZED", "EXPIRED"],
   FUNDS_AUTHORIZED: ["EVIDENCE_SUBMITTED", "EXPIRED", "REFUNDED"],
-  EVIDENCE_SUBMITTED: ["VERIFIED", "DISPUTED"],
-  VERIFIED: ["CAPTURED", "DISPUTED"],
-  DISPUTED: ["CAPTURED", "REFUNDED"],
+  EVIDENCE_SUBMITTED: ["VERIFIED", "DISPUTED", "EXPIRED"],
+  VERIFIED: ["CAPTURED", "DISPUTED", "EXPIRED"],
+  DISPUTED: ["CAPTURED", "REFUNDED", "EXPIRED"],
   CAPTURED: [],
-  EXPIRED: [],
+  // An expired hold can be re-funded: the agreement stands, the buyer approves a new hold.
+  EXPIRED: ["AGREED"],
   REFUNDED: [],
 };
 

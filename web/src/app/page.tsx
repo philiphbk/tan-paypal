@@ -167,6 +167,12 @@ export default function Home() {
             </>
           )}
 
+          {d.state === "EXPIRED" && (
+            <button style={btn} onClick={() => run(() => api(`/api/deals/${d.id}/renew`, {}))}>
+              Hold expired — fund again
+            </button>
+          )}
+
           {d.verification && (
             <p>
               <strong>AI verdict:</strong> {d.verification.verdict} ({d.verification.confidence}) — {d.verification.reasoning}

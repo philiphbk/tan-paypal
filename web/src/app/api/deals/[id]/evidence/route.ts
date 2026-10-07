@@ -4,6 +4,7 @@ import { logEvent, transition } from "@/lib/stateMachine";
 import { verifyEvidence } from "@/lib/verifier";
 import { captureAuthorization } from "@/lib/paypal";
 import { buyerAgentReleasePolicy } from "@/lib/agents";
+import { ensureCapturable, HoldExpiredError, sweepExpiry } from "@/lib/expiry";
 
 /**
  * Seller (or seller agent) submits proof of delivery. The verifier agent checks
@@ -16,6 +17,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!deal) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (deal.state !== "FUNDS_AUTHORIZED") {
     return NextResponse.json({ error: `Deal is ${deal.state}, expected FUNDS_AUTHORIZED` }, { status: 409 });
+  }
+  if (sweepExpiry(deal)) {
+    return NextResponse.json({ deal, error: new HoldExpiredError().message }, { status: 409 });
   }
   const body = await req.json().catch(() => null);
   const text = String(body?.text ?? "").trim();
@@ -49,11 +53,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   logEvent(deal, "RELEASE_REQUESTED", "Policy checks passed", "buyer_agent");
   try {
+    await ensureCapturable(deal);
     const cap = await captureAuthorization(deal.paypal.authorizationId as string, deal.id);
     deal.paypal.captureId = cap.captureId;
     logEvent(deal, "PAYPAL_CAPTURED", `${cap.captureId} (${cap.status})`, "paypal");
     transition(deal, "CAPTURED", "Payment released to seller", "buyer_agent");
   } catch (err) {
+    if (err instanceof HoldExpiredError) {
+      return NextResponse.json({ deal, error: err.message }, { status: 409 });
+    }
     logEvent(deal, "CAPTURE_FAILED", (err as Error).message, "paypal");
     transition(deal, "DISPUTED", "Capture failed; a human can retry the release", "system");
     return NextResponse.json({ deal, error: (err as Error).message }, { status: 502 });

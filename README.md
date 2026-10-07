@@ -42,9 +42,9 @@ npm run dev
 
 ## Roadmap
 
-- [ ] Agreement builder (free text to structured JSON)
+- [x] Agreement builder (free text to structured JSON)
 - [ ] Payouts to the seller
-- [ ] Authorization expiry and reauthorization handling
+- [x] Authorization expiry and reauthorization handling
 - [ ] Buyer and seller views with a live timeline
 - [ ] Outcome receipt page
 - [ ] AG Grid transaction ledger
