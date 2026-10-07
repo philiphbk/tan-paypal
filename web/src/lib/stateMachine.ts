@@ -1,4 +1,4 @@
-import type { Deal, DealState } from "./types";
+import type { Actor, Deal, DealState } from "./types";
 
 /**
  * Allowed transitions. Every state change in the app goes through `transition`,
@@ -27,19 +27,19 @@ export function canTransition(from: DealState, to: DealState): boolean {
   return TRANSITIONS[from].includes(to);
 }
 
-export function transition(deal: Deal, to: DealState, detail?: string): Deal {
+export function transition(deal: Deal, to: DealState, detail?: string, actor: Actor = "system"): Deal {
   if (!canTransition(deal.state, to)) {
     throw new IllegalTransitionError(deal.state, to);
   }
   const at = new Date().toISOString();
-  deal.events.push({ at, type: `STATE_${to}`, detail });
+  deal.events.push({ at, type: `STATE_${to}`, detail, actor });
   deal.state = to;
   deal.updatedAt = at;
   return deal;
 }
 
-export function logEvent(deal: Deal, type: string, detail?: string): void {
+export function logEvent(deal: Deal, type: string, detail?: string, actor: Actor = "system"): void {
   const at = new Date().toISOString();
-  deal.events.push({ at, type, detail });
+  deal.events.push({ at, type, detail, actor });
   deal.updatedAt = at;
 }

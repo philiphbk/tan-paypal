@@ -22,7 +22,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     });
     deal.paypal.orderId = orderId;
     deal.paypal.approveUrl = approveUrl;
-    logEvent(deal, "PAYPAL_ORDER_CREATED", orderId);
+    logEvent(deal, "PAYPAL_ORDER_CREATED", orderId, "paypal");
     return NextResponse.json({ deal, approveUrl });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 502 });

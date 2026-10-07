@@ -12,20 +12,20 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
   const body = await req.json().catch(() => null);
   const decision = body?.decision;
-  if (decision !== "release" && decision !== "dispute") {
-    return NextResponse.json({ error: 'decision must be "release" or "dispute"' }, { status: 400 });
+  if (decision !== "release" && decision !== "refund" && decision !== "dispute") {
+    return NextResponse.json({ error: 'decision must be "release" or "refund"' }, { status: 400 });
   }
-  deal.humanDecision = { decision, note: body?.note ? String(body.note) : undefined, at: new Date().toISOString() };
+  deal.humanDecision = { decision: decision === "release" ? "release" : "dispute", note: body?.note ? String(body.note) : undefined, at: new Date().toISOString() };
   try {
     if (decision === "release") {
       const cap = await captureAuthorization(deal.paypal.authorizationId as string, deal.id);
       deal.paypal.captureId = cap.captureId;
-      logEvent(deal, "PAYPAL_CAPTURED", `${cap.captureId} (human override)`);
-      transition(deal, "CAPTURED", "Human released payment");
+      logEvent(deal, "PAYPAL_CAPTURED", `${cap.captureId} (human override)`, "paypal");
+      transition(deal, "CAPTURED", "Human released payment", "human_reviewer");
     } else {
       await voidAuthorization(deal.paypal.authorizationId as string, deal.id);
-      logEvent(deal, "PAYPAL_VOIDED", "human decision");
-      transition(deal, "REFUNDED", "Hold voided; buyer keeps funds");
+      logEvent(deal, "PAYPAL_VOIDED", "human decision", "paypal");
+      transition(deal, "REFUNDED", "Hold voided; buyer keeps funds", "human_reviewer");
     }
     return NextResponse.json({ deal });
   } catch (err) {

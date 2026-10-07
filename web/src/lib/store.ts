@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Agreement, Deal } from "./types";
+import type { Actor, Agreement, Deal } from "./types";
 
 /**
  * In-memory store, kept on globalThis so it survives Next.js dev hot reloads.
@@ -16,6 +16,7 @@ export function createDeal(
   agreement: Omit<Agreement, "version">,
   buyerLabel = "Buyer",
   sellerLabel = "Seller",
+  proposer: Actor = "human_buyer",
 ): Deal {
   const now = new Date().toISOString();
   const deal: Deal = {
@@ -25,7 +26,7 @@ export function createDeal(
     buyerLabel,
     sellerLabel,
     paypal: {},
-    events: [{ at: now, type: "DEAL_CREATED" }],
+    events: [{ at: now, type: "AGREEMENT_PROPOSED", detail: agreement.title, actor: proposer }],
     createdAt: now,
     updatedAt: now,
   };

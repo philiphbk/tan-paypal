@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 
   const orderId = event.resource?.supplementary_data?.related_ids?.order_id;
   const deal = orderId ? findDealByOrderId(orderId) : undefined;
-  if (deal) logEvent(deal, `WEBHOOK_${event.event_type}`, event.resource?.id);
+  if (deal) logEvent(deal, `WEBHOOK_${event.event_type}`, event.resource?.id, "paypal");
 
   return NextResponse.json({ ok: true });
 }

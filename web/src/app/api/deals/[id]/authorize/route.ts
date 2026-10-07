@@ -16,8 +16,8 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   try {
     const auth = await authorizeOrder(deal.paypal.orderId);
     deal.paypal.authorizationId = auth.authorizationId;
-    logEvent(deal, "PAYPAL_AUTHORIZED", `${auth.authorizationId} (${auth.status})${auth.expiresAt ? `, expires ${auth.expiresAt}` : ""}`);
-    transition(deal, "FUNDS_AUTHORIZED", "Funds held, not captured");
+    logEvent(deal, "PAYPAL_AUTHORIZED", `${auth.authorizationId} (${auth.status})${auth.expiresAt ? `, expires ${auth.expiresAt}` : ""}`, "paypal");
+    transition(deal, "FUNDS_AUTHORIZED", "Funds held, not captured", "human_buyer");
     return NextResponse.json({ deal });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 502 });

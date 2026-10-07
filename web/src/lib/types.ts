@@ -28,12 +28,26 @@ export interface VerificationResult {
   reasoning: string;
   criteria: { criterion: string; met: boolean; note: string }[];
   verifier: "ai" | "offline-fallback";
+  /** Set when the evidence appears to address the verifier instead of describing the work. */
+  injectionSuspected?: boolean;
 }
+
+/** Who performed an action. Agents act within narrow mandates; humans can always overrule. */
+export type Actor =
+  | "buyer_agent"
+  | "seller_agent"
+  | "verifier_agent"
+  | "human_buyer"
+  | "human_seller"
+  | "human_reviewer"
+  | "system"
+  | "paypal";
 
 export interface DealEvent {
   at: string;
   type: string;
   detail?: string;
+  actor?: Actor;
 }
 
 export interface Deal {

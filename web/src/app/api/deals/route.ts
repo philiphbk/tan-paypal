@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createDeal, listDeals } from "@/lib/store";
-import { transition } from "@/lib/stateMachine";
 import { AgreementValidationError, validateAgreementDraft } from "@/lib/agreementBuilder";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +8,11 @@ export async function GET() {
   return NextResponse.json({ deals: listDeals() });
 }
 
-/** Create a deal and lock the agreement (DRAFT -> AGREED). */
+/**
+ * Propose a deal. The buyer (a person or the buyer agent) proposes the
+ * agreement; it stays DRAFT until the seller or seller agent accepts it via
+ * POST /api/deals/[id]/accept.
+ */
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   let draft;
@@ -21,7 +24,7 @@ export async function POST(req: Request) {
     }
     throw err;
   }
-  const deal = createDeal(draft);
-  transition(deal, "AGREED", "Agreement locked at v1");
+  const proposer = body?.proposer === "buyer_agent" ? "buyer_agent" : "human_buyer";
+  const deal = createDeal(draft, "Buyer", "Seller", proposer);
   return NextResponse.json({ deal }, { status: 201 });
 }

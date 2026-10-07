@@ -115,12 +115,13 @@ export default function Home() {
                 deadline: form.deadline || undefined,
                 deliverables: lines(form.deliverables),
                 acceptanceCriteria: lines(form.criteria),
+                proposer: draftInfo ? "buyer_agent" : "human_buyer",
               });
               setDraftInfo(null);
             })
           }
         >
-          Lock agreement
+          Propose agreement to seller
         </button>
       </section>
 
@@ -131,6 +132,17 @@ export default function Home() {
             <small style={{ color: "#555" }}>[{d.state}]</small>
           </h3>
           <ul>{d.agreement.acceptanceCriteria.map((c) => <li key={c}>{c}</li>)}</ul>
+
+          {d.state === "DRAFT" && (
+            <>
+              <button style={btn} onClick={() => run(() => api(`/api/deals/${d.id}/accept`, { actor: "seller_agent" }))}>
+                Seller agent: review &amp; accept
+              </button>{" "}
+              <button style={{ ...btn, background: "#fff", color: "#0b5fff" }} onClick={() => run(() => api(`/api/deals/${d.id}/accept`, { actor: "human_seller" }))}>
+                Seller: accept manually
+              </button>
+            </>
+          )}
 
           {d.state === "AGREED" && (
             <button
@@ -164,13 +176,13 @@ export default function Home() {
           {d.state === "DISPUTED" && (
             <>
               <button style={btn} onClick={() => run(() => api(`/api/deals/${d.id}/resolve`, { decision: "release" }))}>Release payment</button>{" "}
-              <button style={{ ...btn, background: "#d33", borderColor: "#d33" }} onClick={() => run(() => api(`/api/deals/${d.id}/resolve`, { decision: "dispute" }))}>Refund buyer</button>
+              <button style={{ ...btn, background: "#d33", borderColor: "#d33" }} onClick={() => run(() => api(`/api/deals/${d.id}/resolve`, { decision: "refund" }))}>Refund buyer</button>
             </>
           )}
 
-          <details style={{ marginTop: 8 }}>
+          <details open style={{ marginTop: 8 }}>
             <summary>Timeline</summary>
-            <ol>{d.events.map((e, i) => <li key={i}>{e.type}{e.detail ? ` — ${e.detail}` : ""}</li>)}</ol>
+            <ol>{d.events.map((e, i) => <li key={i}><strong>{(e.actor ?? "system").replaceAll("_", " ")}</strong> · {e.type}{e.detail ? ` — ${e.detail}` : ""}</li>)}</ol>
           </details>
         </section>
       ))}
