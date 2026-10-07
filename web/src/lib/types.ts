@@ -69,6 +69,8 @@ export interface Deal {
     /** End of the 29-day valid period: after this the hold is gone. */
     validUntil?: string;
     reauthCount?: number;
+    /** Last capture status PayPal told us about (COMPLETED, REFUNDED, REVERSED...). */
+    captureStatus?: string;
   };
   /** Seller's PayPal account email; the freelance payout goes here after capture. */
   sellerEmail?: string;

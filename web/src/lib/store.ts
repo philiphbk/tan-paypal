@@ -86,11 +86,18 @@ export const listDeals = (): Deal[] =>
     (r) => JSON.parse(r.data) as Deal,
   );
 
-export const findDealByOrderId = (orderId: string) =>
-  parse(db().prepare("SELECT data FROM deals WHERE json_extract(data, '$.paypal.orderId') = ?").get(orderId) as { data: string } | undefined);
-
-export const findDealByPayoutBatchId = (batchId: string) =>
-  parse(db().prepare("SELECT data FROM deals WHERE json_extract(data, '$.payout.batchId') = ?").get(batchId) as { data: string } | undefined);
+/** Find the deal that owns any PayPal reference: order, authorization, capture or payout batch id. */
+export const findDealByPaypalRef = (ref: string) =>
+  parse(
+    db()
+      .prepare(
+        `SELECT data FROM deals WHERE json_extract(data, '$.paypal.orderId') = @r
+            OR json_extract(data, '$.paypal.authorizationId') = @r
+            OR json_extract(data, '$.paypal.captureId') = @r
+            OR json_extract(data, '$.payout.batchId') = @r`,
+      )
+      .get({ r: ref }) as { data: string } | undefined,
+  );
 
 /** Returns true the first time an event id is seen (idempotent webhook handling). */
 export function markWebhookSeen(eventId: string): boolean {
