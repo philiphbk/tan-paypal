@@ -85,7 +85,7 @@ From the [PayPal docs](https://developer.paypal.com/docs/checkout/standard/custo
 
 ## Run it
 
-Requires Node 20.9+ (22 recommended).
+Requires Node 20.9 to 24 (22 recommended).
 
 ```bash
 git clone <this repo>
