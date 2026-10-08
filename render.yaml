@@ -12,38 +12,36 @@ services:
     autoDeploy: true
     envVars:
       - key: NODE_VERSION
-        value: 22
-      # PayPal sandbox credentials: set these in the Render dashboard (never commit them).
+        value: "22"
+      # PayPal sandbox credentials. Render asks for these when you create the Blueprint
+      # (never commit them).
       - key: PAYPAL_CLIENT_ID
         sync: false
       - key: PAYPAL_CLIENT_SECRET
         sync: false
-      - key: PAYPAL_WEBHOOK_ID
-        sync: false
       - key: PAYPAL_API_BASE
         value: https://api-m.sandbox.paypal.com
-      # Optional: enables the AI verifier and agreement drafter. Without it the offline rules run.
-      - key: ANTHROPIC_API_KEY
-        sync: false
       - key: AI_MODEL
         value: claude-sonnet-5-5
       - key: BUYER_AGENT_MAX_AMOUNT
-        value: 500
-      # Optional: one key that grants the reviewer role on every deal (for an ops team).
-      - key: REVIEWER_KEY
-        sync: false
+        value: "500"
       # Hard daily ceiling on AI calls, so a public demo cannot run up a bill.
       - key: LLM_DAILY_CAP
-        value: 300
-      # Optional: lets an external scheduler call /api/cron/sweep. The app also sweeps for
-      # expired holds itself every 10 minutes, so this is only needed for belt and braces.
+        value: "300"
+      # Lets an external scheduler call /api/cron/sweep. The app also sweeps for expired
+      # holds itself every 10 minutes, so this is belt and braces.
       - key: CRON_SECRET
         generateValue: true
       # Shows the seed/reset tools on the home page. Remove for anything but a demo.
       - key: DEMO_MODE
-        value: 1
+        value: "1"
       # The free plan has an ephemeral disk, so the SQLite file resets on each deploy or
       # restart (use "Load sample deals" to refill). For durable data upgrade the plan,
       # add a disk mounted at /var/data, and set DATABASE_PATH=/var/data/tan.db.
       - key: DATABASE_PATH
         value: /tmp/tan.db
+      # NOT in this file on purpose. Add these in the Render dashboard (Environment tab)
+      # after the first deploy, when you have them:
+      #   ANTHROPIC_API_KEY   enables the AI drafter and verifier (offline rules without it)
+      #   PAYPAL_WEBHOOK_ID   from the webhook you register at https://<your-service>.onrender.com/api/webhooks/paypal
+      #   REVIEWER_KEY        optional: reviewer role on every deal, for an ops team

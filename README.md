@@ -152,7 +152,7 @@ Import [`postman/tan-paypal-sandbox.postman_collection.json`](postman/tan-paypal
 
 ## Deploy to Render
 
-[`render.yaml`](render.yaml) is a Blueprint. In Render choose **New → Blueprint**, point it at this repo, and fill in the secrets it asks for (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, optionally `PAYPAL_WEBHOOK_ID` and `ANTHROPIC_API_KEY`). The free plan's disk is ephemeral, so the SQLite database resets on redeploy; use *Load sample deals* to refill it, or attach a disk (see comments in the file).
+[`render.yaml`](render.yaml) is a Blueprint. In Render choose **New → Blueprint**, point it at this repo, and fill in the two secrets it asks for (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`). After the first deploy, add `ANTHROPIC_API_KEY` (AI features) and `PAYPAL_WEBHOOK_ID` (after registering `https://<your-service>.onrender.com/api/webhooks/paypal` in the PayPal dashboard) in the service's Environment tab. The free plan's disk is ephemeral, so the SQLite database resets on redeploy; use *Load sample deals* to refill it, or attach a disk (see comments in the file).
 
 ## Architecture
 
