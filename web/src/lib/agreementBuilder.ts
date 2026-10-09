@@ -123,7 +123,8 @@ async function draftWithModel(text: string, now: Date): Promise<AgreementDraft> 
     toolName: "record_agreement",
     toolDescription: "Record the structured agreement extracted from the deal description.",
     inputSchema: SCHEMA,
-    maxTokens: 1200,
+    maxTokens: 4096,
+    effort: "low",
   });
   return validateAgreementDraft(raw, now, { allowMissingAmount: true });
 }

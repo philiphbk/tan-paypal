@@ -28,6 +28,7 @@ Every action on the live timeline is attributed to the actor that took it: buyer
 - The verifier only recommends. It cannot move money.
 - One function (`buyerAgentReleasePolicy` in [`web/src/lib/agents.ts`](web/src/lib/agents.ts)) is the only path from a verdict to a capture. It requires a `pass`, confidence of at least 0.7, **every** criterion met, no injection flag, on-time evidence, and an amount within the buyer agent's mandate (default 500).
 - Anything else lands in `DISPUTED`, where a human releases or refunds.
+- **The verifier fails closed.** If an AI key is configured and the model errors, refuses, runs out of tokens or hits the daily budget, the result is `needs_human`, never a pass. The keyword-matching offline rules run only when no AI key is configured at all (demo mode), so a degraded AI can never release money on a weaker check than the operator set up.
 - All state changes go through one state machine (`transition()`), so illegal jumps such as capturing before verification cannot happen.
 
 ### Evidence is untrusted input

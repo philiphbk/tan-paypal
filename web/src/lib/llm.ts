@@ -41,6 +41,18 @@ export type ContentBlock =
   | { type: "text"; text: string }
   | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
 
+export type Effort = "low" | "medium" | "high";
+
+/**
+ * Ask the model for structured output by having it call one tool.
+ *
+ * Newer models reject a *forced* tool choice (`tool_choice` of type "tool" or
+ * "any" is a 400), so this uses `auto` and an explicit instruction instead, and
+ * the caller re-validates whatever comes back (the model's output is untrusted
+ * either way). Thinking is left at the model default; its tokens count towards
+ * max_tokens, so the limits here leave room for it. Effort is set per call
+ * because it is the main cost/latency lever.
+ */
 export async function callModelForJson(args: {
   system: string;
   user: string | ContentBlock[];
@@ -48,6 +60,7 @@ export async function callModelForJson(args: {
   toolDescription: string;
   inputSchema: Record<string, unknown>;
   maxTokens?: number;
+  effort?: Effort;
 }): Promise<unknown> {
   spendLlmBudget();
   const res = await fetch(API_URL, {
@@ -59,8 +72,8 @@ export async function callModelForJson(args: {
     },
     body: JSON.stringify({
       model: modelName(),
-      max_tokens: args.maxTokens ?? 1024,
-      system: args.system,
+      max_tokens: args.maxTokens ?? 4096,
+      system: `${args.system}\n\nRespond by calling the ${args.toolName} tool exactly once. Do not answer in plain text.`,
       messages: [{ role: "user", content: args.user }],
       tools: [
         {
@@ -69,15 +82,20 @@ export async function callModelForJson(args: {
           input_schema: args.inputSchema,
         },
       ],
-      tool_choice: { type: "tool", name: args.toolName },
+      tool_choice: { type: "auto" },
+      output_config: { effort: args.effort ?? "medium" },
     }),
-    signal: AbortSignal.timeout(30_000),
+    signal: AbortSignal.timeout(60_000),
   });
   if (!res.ok) throw new Error(`Model API ${res.status}: ${await res.text()}`);
   const data = (await res.json()) as {
+    stop_reason?: string;
     content: { type: string; name?: string; input?: unknown }[];
   };
-  const call = data.content.find((c) => c.type === "tool_use" && c.name === args.toolName);
-  if (!call?.input) throw new Error("Model did not return the requested structured output");
-  return call.input;
+  const call = data.content?.find((c) => c.type === "tool_use" && c.name === args.toolName);
+  if (call?.input) return call.input;
+  // Say why there was no answer: a refusal and a truncation need different responses.
+  if (data.stop_reason === "refusal") throw new Error("The model declined this request");
+  if (data.stop_reason === "max_tokens") throw new Error("The model ran out of tokens before answering");
+  throw new Error("The model did not return the requested structured output");
 }

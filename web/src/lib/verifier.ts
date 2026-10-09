@@ -32,9 +32,14 @@ export async function verifyEvidence(
     try {
       result = await verifyWithModel(agreement, evidence, extras);
     } catch (err) {
-      console.error("AI verifier failed, falling back:", err);
+      // The AI was supposed to decide and could not (outage, refusal, budget cap).
+      // Do NOT fall back to keyword rules here: they can say "pass", and money must
+      // never move on a weaker check than the one the operator configured.
+      console.error("AI verifier failed, escalating to a human:", err);
+      result = verifierUnavailable(agreement, (err as Error).message);
     }
   }
+  // No AI configured at all: the offline rules are the documented demo mode.
   result ??= verifyOffline(agreement, evidence, extras);
 
   if (injection || result.injectionSuspected) {
@@ -101,6 +106,7 @@ async function verifyWithModel(agreement: Agreement, evidence: string, extras: V
     toolName: "record_verdict",
     toolDescription: "Record the verification verdict for the submitted evidence.",
     inputSchema: SCHEMA,
+    effort: "medium",
   })) as Record<string, unknown>;
 
   if (!["pass", "fail", "needs_human"].includes(raw.verdict as string)) {
@@ -127,6 +133,17 @@ async function verifyWithModel(agreement: Agreement, evidence: string, extras: V
     criteria,
     verifier: "ai",
     injectionSuspected: raw.evidence_addresses_verifier === true,
+  };
+}
+
+/** Result used when an AI verifier is configured but could not give an answer. Never a pass. */
+export function verifierUnavailable(agreement: Agreement, reason: string): VerificationResult {
+  return {
+    verdict: "needs_human",
+    confidence: 0,
+    reasoning: `The AI verifier could not check this evidence (${reason.slice(0, 160)}), so a person needs to decide.`,
+    criteria: agreement.acceptanceCriteria.map((criterion) => ({ criterion, met: false, note: "Not checked: verifier unavailable" })),
+    verifier: "offline-fallback",
   };
 }
 
