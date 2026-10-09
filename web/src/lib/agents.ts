@@ -1,4 +1,5 @@
 import type { Agreement, Deal } from "./types";
+import { maxAutoReleaseAmount } from "./config";
 
 /**
  * Agent mandates. Each agent has a narrow job and the code that grants it
@@ -15,7 +16,7 @@ import type { Agreement, Deal } from "./types";
 export const RELEASE_CONFIDENCE = 0.7;
 
 /** Largest amount the buyer agent may release without a human. */
-export const maxAutoReleaseAmount = () => Number(process.env.BUYER_AGENT_MAX_AMOUNT ?? 500);
+export { maxAutoReleaseAmount };
 
 export interface AgentDecision {
   ok: boolean;

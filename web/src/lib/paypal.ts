@@ -59,8 +59,29 @@ async function ppFetch<T>(
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(`PayPal ${path} failed: ${res.status} ${text}`);
+  if (!res.ok) throw new Error(describePayPalError(path, res.status, text));
   return (text ? JSON.parse(text) : {}) as T;
+}
+
+/**
+ * Turn PayPal's error JSON into one readable line: what was wrong, in which field,
+ * and the debug id PayPal support asks for. Falls back to the raw body if it is not JSON.
+ */
+export function describePayPalError(path: string, status: number, body: string): string {
+  try {
+    const j = JSON.parse(body) as {
+      name?: string; message?: string; debug_id?: string;
+      details?: { field?: string; issue?: string; description?: string }[];
+    };
+    const issues = (j.details ?? [])
+      .map((d) => [d.issue, d.field && `at ${d.field}`, d.description && `(${d.description})`].filter(Boolean).join(" "))
+      .filter(Boolean)
+      .join("; ");
+    const head = [j.name, issues].filter(Boolean).join(": ") || j.message || "request failed";
+    return `PayPal rejected ${path} (HTTP ${status}). ${head}${j.debug_id ? ` [debug id ${j.debug_id}]` : ""}`;
+  } catch {
+    return `PayPal ${path} failed: ${status} ${body.slice(0, 300)}`;
+  }
 }
 
 interface PayPalLink {

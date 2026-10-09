@@ -5,6 +5,8 @@
  * parse. Callers must still validate the result: the model output is untrusted.
  */
 
+import { modelName, positiveNumber } from "./config";
+
 const API_URL = "https://api.anthropic.com/v1/messages";
 
 export const llmEnabled = () => Boolean(process.env.ANTHROPIC_API_KEY);
@@ -18,13 +20,13 @@ const g = globalThis as unknown as { __llmUse?: { day: string; n: number } };
 export function spendLlmBudget(now = new Date()) {
   const day = now.toISOString().slice(0, 10);
   const use = (g.__llmUse = g.__llmUse?.day === day ? g.__llmUse : { day, n: 0 });
-  const cap = Number(process.env.LLM_DAILY_CAP || 300);
+  const cap = positiveNumber(process.env.LLM_DAILY_CAP, 300);
   if (use.n >= cap) throw new Error("Daily AI budget reached; using offline rules");
   use.n += 1;
 }
 export const resetLlmBudget = () => { g.__llmUse = undefined; };
 
-export const modelName = () => process.env.AI_MODEL ?? "claude-sonnet-5-5";
+export { modelName };
 
 /**
  * Wrap untrusted text in a tagged block. Any closing tag inside the text is

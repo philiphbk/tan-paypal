@@ -90,6 +90,24 @@ test("PayPal writes are idempotent: repeating /pay returns the same order", asyn
   assert.equal(a.deal.paypal.orderId, b.deal.paypal.orderId);
 });
 
+test("a blank APP_BASE_URL (as copied from a template) still gives PayPal absolute return URLs", async () => {
+  const saved = process.env.APP_BASE_URL;
+  process.env.APP_BASE_URL = "";
+  try {
+    const c = await propose();
+    await call(accept, c.id, { keys: c.as("seller"), body: {} });
+    const res = await call(pay, c.id, { keys: c.as("buyer") });
+    assert.equal(res.status, 200, JSON.stringify(await res.clone().json()));
+    const { approveUrl } = await json(res);
+    assert.match(approveUrl, /^https?:\/\//);
+    const order = sim.simulatedOrderSummary((await read(c)).paypal.orderId);
+    const back = sim.approveSimulatedOrder(order!.id)!.redirect;
+    assert.match(back, /^http:\/\/localhost:3000\/deals\/.+\/buyer\?approved=1/);
+  } finally {
+    process.env.APP_BASE_URL = saved;
+  }
+});
+
 test("authorizing before the buyer approves is refused by PayPal and the deal stays AGREED", async () => {
   const c = await propose();
   await call(accept, c.id, { keys: c.as("seller"), body: {} });
